@@ -2,10 +2,8 @@ import numpy as np
 import xarray as xr
 import os
 import pandas as pd
-import hpelm
 from pathlib import Path
-from sklearn.linear_model import LinearRegression, Ridge
-from sklearn.neural_network import MLPRegressor
+
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
@@ -29,222 +27,8 @@ from cartopy.feature import ShapelyFeature
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 warnings.filterwarnings("ignore")
 
-class SPM:
-	"""	Single Point Modeler class to standardize interfaces of MME
-		implementation classes
-		------------------------------------------------------------------------
-		MME Methodologies Standardized:
-			- Multiple Linear regression (MLR): sklearn.linear_model.LinearRegression
-			- Extreme Learning Machine (ELM): hpelm.ELM
-			- Ensemble Mean (EM): numpy.nanmean
-			- Bias-Corrected Ensemble Mean (BCEM): numpy.nanmean
-		------------------------------------------------------------------------
-		Methods:
-			constructor(
-				**Returns Single Point Modeler Object - wrapper for another regressor class***
-				model: string - an MME Methodogoly [MLR, PCR, EM, BCEM, Ridge, MLR-SVD, SVD, ELM, PCA-ELM, ELM-PCA, SLFN)
-				xtrain_shape: int - number of input features for ELM, ELM-PCA, PCA-ELM
-				ytrain_shape: int - number of targets for ELM, PCA-ELM, ELM-PCA to predict
-				xval_window: int - number of samples to leave out during each cross validation round
-				hidden_layer_neurons: int - number of neurons in hidden layer of ELM, PCA-ELM, ELM-PCA
-				activation: string - activation function for ELM, PCA-ELM, ELM-PCA ['sigm', 'tanh', 'rbf_l1', 'rbf_l2', 'rbf_linf']
-				standardization: string - data scaling methodology ['minmax', 'std_anomaly', None]
-				max_iter: int - maximum number of training iterations over dataset for SLFN
-				normalize: Boolean - whether to normalize data by default for Ridge Regression
-				fit_intercept: Boolean - whether to use intercept in calculation of MLR / Ridge Regressions
-				alpha: float - alpha for SLFN
-				solver: string - training algorithm for SLFN ['auto', 'adam', 'lbfgs', 'sgd'] (check docs)
-				W: np.array - matrix of n_features x n_components  for initialization of ELM weights. only used in PCA-ELM
-				pca: sklearn.decomposition.PCA object - used to initialize W, B, and # neurons in ELM model based on PCA transformation of data
-			)
-
-			train(
-				**fits the model to data**
-				x: np.array - shape (n_samples x n_input_features)
-				y: np.array - shape (n_samples x n_targets) (no guarantees if n_targets > 1)
-			)
-
-			predict(
-				**makes predictions using trained model**
-				x: np.array - shape (n_samples x n_input_features)
-			)
-		"""
-
-	def __init__(self, model, xtrain_shape=7, ytrain_shape=1, hidden_layer_neurons=5, activation='sigm', max_iter=200, normalize=False, fit_intercept=True, alpha=1.0, solver='auto', W=None, pca=None):
-		self.model_type = model
-		if model == 'SVD':
-			self.model = SVD()
-		elif model == 'MLR-SVD':
-			self.model =  Ridge( normalize=normalize, fit_intercept=fit_intercept, alpha=0.0, solver='svd')
-		elif model in ['ELM', 'EWP']:
-			self.model = hpelm.ELM(xtrain_shape, ytrain_shape)
-			self.model.add_neurons(hidden_layer_neurons, activation)
-		elif model == 'PCA-ELM':
-			self.model = hpelm.ELM(xtrain_shape, ytrain_shape)
-			self.model.add_neurons(pca.components_.shape[0], activation, W=pca.components_.T[:xtrain_shape,:], B=np.arange(pca.components_.shape[0]))
-		elif model in ['MLR', 'PCR']:
-			self.model = LinearRegression( fit_intercept=fit_intercept)
-		elif model == 'Ridge':
-			self.model =  Ridge( normalize=normalize, fit_intercept=fit_intercept, alpha=alpha, solver=solver)
-		elif model == 'SLFN':
-			self.model =  MLPRegressor(max_iter=max_iter, solver=solver, hidden_layer_sizes=(hidden_layer_neurons), activation=activation)
-		elif model in ['EM', 'BCEM']:
-			self.model = EnsembleMean()
-		else:
-			print('invalid model type {}'.format(model))
-
-	def train(self, x, y):
-		if self.model_type in ['SVD', 'MLR-SVD', 'MLR', 'Ridge', 'PCR']:
-			self.model.fit(x,y)
-		elif self.model_type in ['ELM', 'PCA-ELM', 'EWP']:
-			score = self.model.train(x, y, 'r')
-		elif self.model_type == 'SLFN':
-			self.model.fit(x, y.reshape(-1,1).ravel())
-		elif self.model_type in [ 'EM', 'BCEM' ]:
-			pass
-		else:
-			print('invalid model type')
-
-	def predict(self, x):
-		return self.model.predict(x)
-
-
-class EnsembleMean():
-	"""Wrapper class for Ensemble Mean"""
-	def predict(self, x):
-		return np.nanmean(x, axis=1).reshape(-1,1)
-
-
-class SVD():
-	"""Wrapper class for Singular Value Decomposition MLR methodology"""
-	#method from https://machinelearningmastery.com/solve-linear-regression-using-linear-algebra/
-	def fit(self, x, y):
-		self.b = np.linalg.pinv(x).dot(y)
-		return self
-
-	def predict(self, x):
-		return x.dot(self.b)
-
-
-class Scaler:
-	"""Handles all data standardization / scaling
-	------------------------------------------------------------------------
-		Methodologies:
-			Minmax: scales to a predefined range by range_minimum + predefined_range * (x-data_minimum) / (data_range)
-
-			Standard Anomaly / Gauss / Normalize: Subtract mean, divide by standard deviation
-	--------------------------------------------------------------------------
-		Class Methods:
-			constructor(
-				**initialize scaler object**
-				minmax_range: list - length 2, first member is minimum scaling range, second is maximum
-			)
-
-			fit(
-				**save metadata about data**
-				data: np.array - shape (n_samples x n_features)
-			)
-
-			transform(
-				**applies scaling to data provided**
-				data: np.array - shape (n_samples x n_features)
-				method: string - indicates methodology ['minmax', 'std_anomaly', None]
-			)
-
-			fit_transform(
-				**combine fit and transform methods for convenience**
-				data: np.array - shape (n_samples x n_features)
-				method: string - indicates methodology ['minmax', 'std_anomaly', None]
-			)
-
-			recover(
-				**reverse the scaling, transform data back to original distribution**
-				data: np.array - shape (n_samples x n_features)
-				method: string - indicates methodology ['minmax', 'std_anomaly', None]
-			)
-	----------------------------------------------------------------------------"""
-
-
-	def __init__(self, minmax_range=[-1,1]):
-		""" initialize scaler object """
-		self.mu = 0
-		self.std = 1
-		self.mx, self.mn = 0, 0
-		self.range = 0
-		self.minmax_range_mn = minmax_range[0]
-		self.minmax_range_size = minmax_range[1] - minmax_range[0]
-		self.method = None
-
-	def fit(self, data):
-		"""save metadata for use in scaling """
-		self.mu = np.nanmean(data, axis=0)
-		self.std = np.nanstd(data, axis=0)
-		self.mx, self.mn = np.nanmax(data, axis=0), np.nanmin(data, axis=0)
-		self.range = self.mx - self.mn
-
-
-
-	def transform(self, data, method='siriehtesolc'):
-		"""apply scaling to data """
-		if method == 'siriehtesolc':
-			method = self.method
-		self.method=method
-		if method == 'minmax':
-			scaled = self.minmax_range_mn +  self.minmax_range_size * ((data - self.mn) / self.range)
-			return  scaled
-		elif method == 'std_anomaly':
-			return (data - self.mu) / self.std
-		else:
-			return data #
-
-	def fit_transform(self, data, method):
-		"""combine fit and transform methods"""
-		self.fit(data)
-		return self.transform(data, method=method)
-
-	def recover(self, output, method='siriehtesolc'):
-		"""transform data back to original distribution"""
-		if method == 'siriehtesolc':
-			method = self.method
-		if method=='minmax':
-			scaled = (((output - self.minmax_range_mn) / self.minmax_range_size) * self.range[1] + self.mn[1]).reshape(-1,1)
-			return scaled
-		elif method == 'std_anomaly':
-			return (output * self.std[1]) + self.mu[1]
-		else:
-			return output
-
 class MME:
-	"""Multi-Model Ensemble class implementing numerous MME methodologies, as
-		well as some data management and visualization
-	---------------------------------------------------------------------------
-		Methodologies:
-			- Multiple Linear Regression (MLR)
-				> Traditional Multiple Linear Regression
-			- Principle Components Regression (PCR)
-				> Multiple Linear Regression of data transformed to orthogonal space
-				> Eliminates Multicollinearity problems in highly correlated data features
-			- MLR using Singular Value Decomposition solving algorithm (SVD)
-				> MLR-SVD for alternate implementation
-				> SVD also addresses multicollinearity in input data features
-			- Traditional Ensemble Mean (EM)
-				> Mean of input data features
-			- Bias Corrected Ensemble Mean (BCEM)
-			 	> Mean of input data features with bias correction applied
-			- Extreme Learning Machine (ELM)
-				> ELM algorithm for training artificial neural networks
-			- ELM with PCA (ELM-PCA)
-				> ELM algorithm applied to data transformed to orthogonal space by PCA
-				> PCA Eliminates Multicollinearity problems in highly correlated data features
-			- PCA-ELM (PCA-ELM)
-				> ELM algorithm applied to data transformed to orthogonal space by PCA
-				> PCA-calculated Eigenvectors used to initialize weights of artificial neural network (W)
-				> Number of hidden neurons in neural network equal to number of principle components needed
-				  to retain X% of variability in input data
-				> Bias vector for Neural network set to constant to eliminate random variation
-				> Method optimizes time to convergence of neural network weight
-			- Single Layer Feed-forward Neural Network (SLFN)
-				> Traditional stochastic gradient descent approach to artificial neural network
+	"""Multi-Model Ensemble class - stores & handles data
 	---------------------------------------------------------------------------
 		Class Attributes:
 			years: (np.array) - shape (n_years, 1)
@@ -271,22 +55,57 @@ class MME:
 			ncdf_forecast_data (dict) - same as model_data except for real time forecast data
 			forecast_pca(s) (dict) - stores pca objects trained on all training data for use in transforming new rtf data the same way
 	---------------------------------------------------------------------------"""
-	def __init__(self):
-		self.years = None
-		self.model_data = []
-		self.observations = None
-		self.type = None
-		self.hindcasts = {}
+	def __init__(self, reader_ret):
+		self.type = reader_ret[0]
+		if self.type == 'Single-Point':
+			data_type, years, observations, model_data, lats, lons, hindcasts, training_forecasts = reader_ret
+			if len(observations) == 0: #this is a forecast
+				assert False, 'Must provide Y input data (historical observations) to initialize MME'
+			else:
+				self.type, self.years = data_type, years
+				self.model_data, self.observations = model_data, observations
+				self.hindcasts = hindcasts
+				self.training_forecasts = training_forecasts
+				self.lats, self.lons = lats, lons
+		else:
+			(data_type, model_data, lats, lons, years, nanmask, goodmask, observations, hindcasts, training_forecasts) = reader_ret
+			if len(observations) == 0: #this is a forecast
+				assert False, 'Must provide Y input data (historical observations) to initialize MME'
+			else:
+				self.years =  years
+				self.model_data, self.observations = model_data, observations
+				self.hindcasts = hindcasts #this is included becase were preemptively setting the 'obs' key for comparison
+				self.training_forecasts = training_forecasts #this is included becase were preemptively setting the 'obs' key for comparison
+				self.nanmask, self.goodmask = nanmask, goodmask
+				self.lats, self.lons = lats, lons
+
+		#filled in later
 		self.hindcast_models = {}
 		self.xval_hindcast_metrics = {}
 		self.training_forecast_metrics = {}
-		self.training_forecasts = {}
 		self.forecast_models = {}
 		self.real_time_forecasts = {}
 		self.forecast_scalers = {}
 		self.ncdf_forecast_data = []
 		self.forecast_pca = {}
 		self.forecast_pcas = {}
+
+
+	def add_forecast(self, reader_ret):
+		assert reader_ret[0] == self.type, 'must have 2d data for a 2d mme, and 1d for 1d lol'
+		if self.type == 'Single-Point':
+			data_type, years, observations, model_data, lats, lons, hindcasts, training_forecasts = reader_ret
+			self.forecast_data = model_data
+			self.fcst_years = years
+			self.fcst_obs = observations
+		else:
+			(data_type, model_data, lats, lons, years, nanmask, goodmask, observations, hindcasts, training_forecasts) = reader_ret
+			self.forecast_data = model_data
+			self.fcst_years = years
+			self.fcst_obs = observations
+		return True
+
+
 
 	def compute_mmes(self, mme_methodologies, args):
 		print('\nComputing MMEs')
@@ -350,182 +169,6 @@ class MME:
 			else:
 				print('Invalid MME {}'.format(method))
 
-	def read_txt(self, filepath, delimiter=',', is_forecast=False):
-		"""Reads data in format csv, tsv, txt for a Single-Lat/Long-Point MME
-		-----------------------------------------------------------------------
-		filepath: string - describes path to csv, tsv, txt training data file
-		delimiter: string - character separating data: ','' for csv, '\t' for tsv
-		is_forecast: Boolean - whether data file is for real time forecast or not
-		-------------------------------------------------------------------------
-		Training Data Format should be like this (is_forecast=False):
-
-		Year1,Observation1,Model1_1,Model2_1,Model3_1,Model4_1,Model5_1,....ModelN_1
-		Year2,Observation2,Model1_2,Model2_2,Model3_2,Model4_2,Model5_2,....ModelN_2
-		Year3,Observation3,Model1_3,Model2_3,Model3_3,Model4_3,Model5_3,....ModelN_3
-		.   .  .
-		.. .
-		.  .   .
-		YearM,ObservationM,Model1_M,Model2_M,Model3_M,Model4_M,Model5_M,....ModelN_M
-		------------------------------------------------------------------------
-		Real Time Forecast Data Format should be like this (is_forecast=True):
-
-		Year1,Model1_1,Model2_1,Model3_1,Model4_1,Model5_1,....ModelN_1
-		Year2,Model1_2,Model2_2,Model3_2,Model4_2,Model5_2,....ModelN_2
-		Year3,Model1_3,Model2_3,Model3_3,Model4_3,Model5_3,....ModelN_3
-		.   . .
-		.   . .
-		.  .  .
-		YearM,Model1_M,Model2_M,Model3_M,Model4_M,Model5_M,....ModelN_M
-		------------------------------------------------------------------------"""
-
-		assert Path(filepath).is_file(), "Not a valid file path".filepath(filepath) #make sure its a valid file
-
-		if not is_forecast:
-			assert self.type is None, 'Cannot re-initialize MME object'
-			self.type = 'Single-Point'
-			data = np.genfromtxt(filepath, delimiter=delimiter, dtype=float)
-			self.years = data[:,0].reshape(-1,1)
-			self.observations = data[:, 1].reshape(-1,1)
-			self.model_data = data[:, 2:]
-			self.lats, self.lons = [1], [1]
-			for model in range(self.model_data.shape[1]):
-				if 'Model {}'.format(model+1) not in self.hindcasts.keys():
-					self.hindcasts['Model {}'.format(model+1)] = self.model_data[:, model]
-					self.training_forecasts['Model {}'.format(model+1)] = self.model_data[:, model]
-			self.hindcasts['Obs']= self.observations
-			self.training_forecasts['Obs']= self.observations
-		else:
-			raw = np.genfromtxt(filepath, delimiter=delimiter, dtype=float)
-			if len(raw.shape) == 1:
-				raw = raw.reshape(1,-1)
-			data = raw[:, 1:]
-			data = np.hstack((np.arange(2*data.shape[0]).reshape( data.shape[0], 2), data))
-			return data
-
-
-
-
-	def read_multiple_ncdf(self, dir_path, observations_filename, latitude_key='latitude', longitude_key='longitude', time_key='time', obs_time_key='time', using_datetime=False, axis_order='xyt', is_forecast=False):
-		"""reads all ncdf files in your directory path
-		---------------------------------------------------------------------------
-		dir_path (string) - path to directory storing separate ncdf files for each model, and observations
-		observations_filename (string) - name of ncdf file in dir_path containing observations
-		latitude_key (string) - name of coordinate field in NCDF files representing latitude
-		longitude_key (string) - name of coordinate field in NCDF files representing longitude
-		time_key (string) - name of coordinate field in NCDF files representing years
-		obs_time_key (string) - name of coordinate field in observation NCDF file representing years
-		using_datetime (boolean) - whether year coordinates in NCDF files are in datetime format, or not
-		axis_order (string) - represnts order of axes in NCDF variable.values - if 'txy', we will reshape to 'xyt'.
-		is_forecast (Boolean) - is this RTF data? then observations filename will not be used , observations wont be loaded
-		--------------------------------------------------------------------------
-		NCDF File Format:
-			> coords: latitude (n_latitudes), longitude (n_longitudes), time (n_years)
-			> should have 1 dataArray with dataArray.values of shape (n_lats, n_lons, n_years) - if (n_years, n_lats, n_lons), use axis_order='txy' to reshape
-	 		> should be 1 file for each model, 1 for observations.
-			> All files must have same dimensions
-		---------------------------------------------------------------------------"""
-
-		assert Path(dir_path).is_dir(), "Not a valid directory path {}".format(dir_path) #make sure its a valid file
-		if not is_forecast:
-			assert self.type is None, "Cannot re-initialize MME object"
-			assert (Path(dir_path) / observations_filename).is_file(), "Not a valid file path {}".format(str(Path(dir_path) / observations_filename)) #make sure its a valid file
-			self.type= 'Multi-Point'
-
-			for file in Path('.').glob('{}/*'.format(dir_path)):
-				print(str(file).split('/')[-1], observations_filename)
-				if str(file).split('/')[-1] == observations_filename:
-					self.__read_one_ncdf(Path(dir_path) / observations_filename, latitude_key=latitude_key, longitude_key=longitude_key,time_key=time_key, obs_time_key=obs_time_key, using_datetime=using_datetime, axis_order=axis_order, is_observations=True)
-				else:
-					self.__read_one_ncdf(file, latitude_key=latitude_key, longitude_key=longitude_key, time_key=time_key, obs_time_key=obs_time_key, using_datetime=using_datetime, axis_order=axis_order) #KJCH Lazy fix later 'T'
-
-			self.model_data=np.asarray(self.model_data)
-			self.nanmask = np.sum(np.isnan(self.model_data), axis=(0,3))
-			self.goodmask = np.isnan(self.nanmask / self.nanmask).astype(bool)
-			self.nanmask = self.nanmask.astype(bool)
-			self.model_data[:,self.nanmask,:] = np.random.randint(-1000, -900, self.model_data.shape)[:,self.nanmask,:]
-			self.observations[:,self.nanmask,:] = np.random.randint(-1000, -900, self.observations.shape)[:,self.nanmask,:]
-			self.hindcasts = {}
-			self.hindcasts['Obs'] = self.observations.reshape(self.observations.shape[1], self.observations.shape[2], self.observations.shape[3])
-			self.training_forecasts['Obs'] = self.observations.reshape(self.observations.shape[1], self.observations.shape[2], self.observations.shape[3])
-		else:
-			for file in Path('.').glob('{}/*'.format(dir_path)):
-				print(str(file).split('/')[-1], observations_filename)
-				if str(file).split('/')[-1] == observations_filename:
-					self.__read_one_ncdf(Path(dir_path) / observations_filename, latitude_key=latitude_key, longitude_key=longitude_key, time_key=time_key, obs_time_key=obs_time_key, using_datetime=using_datetime, axis_order=axis_order, is_observations=True, is_forecast=True) #need to add 'obstimekey'
-				else:
-					self.__read_one_ncdf(file, latitude_key=latitude_key, longitude_key=longitude_key, time_key=time_key, obs_time_key=obs_time_key, using_datetime=using_datetime, axis_order=axis_order, is_forecast=True) #KJCH Lazy fix later 'T'
-			self.ncdf_forecast_data = np.asarray(self.ncdf_forecast_data)
-			return self.ncdf_forecast_data
-
-	def __read_one_ncdf(self, filepath, latitude_key='latitude', longitude_key='longitude', time_key='time',obs_time_key='time',  is_observations=False, using_datetime=False, axis_order='xyt', is_forecast=False):
-		"""-Reads data from a netCDF file with a single variable
-		   -Stores model data, metadata, and observations internally.
-		   -ncdf files imply single-point data
-		   -netcdf files should be have coords [lat, lon, time] and values observations, model1 .. modeln"""
-
-		assert Path(filepath).is_file(), "Not a valid file path {}".format(filepath) #make sure its a valid file
-
-		DS = xr.open_dataset(filepath, decode_times=using_datetime)
-		if not is_observations: #KJCH Lazy fix later
-			DS = DS.rename_vars({latitude_key:'latitude', longitude_key:'longitude', time_key:'time'})
-			if 'M' in DS.coords:
-				DS = DS.mean(dim='M')
-		else:
-			DS = DS.rename_vars({latitude_key:'latitude', longitude_key:'longitude', obs_time_key:'time'})
-
-		for var_name, data in DS.data_vars.items():
-			dv = data.values.squeeze()
-			dv = dv.transpose(1,2,0) if axis_order == 'txy' else data.values
-			if is_observations:
-				self.observations = np.asarray([dv])
-			else:
-				if is_forecast:
-					self.ncdf_forecast_data.append(dv)
-				else:
-					self.model_data.append(dv)
-		self.lats = DS.latitude.values
-		self.lons = DS.longitude.values
-		if using_datetime:
-			self.years = np.asarray([pd.to_datetime(i).year for i in DS.time.values]).reshape(-1,1)
-		else:
-			self.years = np.asarray([str(i) for i in DS.time.values]).reshape(-1,1)
-
-
-	def read_full_ncdf(self, filepath, latitude_key='latitude', longitude_key='longitude', time_key='time', observations_key='observations', using_datetime=True, axis_order='xyt', is_forecast=False):
-		"""Same as read_multiple_ncdf except all models and observations should be separate variables in the same NCDF file - observastions key is name of observations variable"""
-		assert Path(filepath).is_file(), "Not a valid file path {}".format(filepath) #make sure its a valid file
-		if not is_forecast:
-			assert self.type is None, "Cannot re-initialize MME object"
-			self.type= 'Multi-Point'
-			model_data = []
-			DS = xr.open_dataset(filepath, decode_times=using_datetime)
-			DS = DS.rename_vars({latitude_key:'latitude', longitude_key:'longitude', time_key:'time'})
-			for var_name, data in DS.data_vars.items():
-				dv = data.values.squeeze()
-				dv = dv.transpose(1,2,0) if axis_order == 'txy' else data.values
-				if var_name == observations_key:
-					self.observations = np.asarray([dv])
-				else:
-					model_data.append(dv)
-			self.lats = DS.latitude.values
-			self.lons = DS.longitude.values
-			if using_datetime:
-				self.years = np.asarray([pd.to_datetime(i).year for i in DS.time.values]).reshape(-1,1)
-			else:
-				self.years = np.asarray([str(i) for i in DS.time.values]).reshape(-1,1)
-			self.model_data = np.asarray(model_data)
-		else:
-			DS = xr.open_dataset(filepath, decode_times=using_datetime)
-			DS = DS.rename_vars({latitude_key:'latitude', longitude_key:'longitude', time_key:'time'})
-			for var_name, data in DS.data_vars.items():
-				dv = data.values.squeeze()
-				dv = dv.transpose(1,2,0) if axis_order == 'txy' else data.values
-				if var_name == observations_key:
-					self.observations = np.asarray([dv])
-				else:
-					model_data.append(dv)
-			self.ncdf_forecast_data = np.asarray(model_data)
-			return self.ncdf_forecast_data
 
 	def __preprocess_data(self, data, crossval_start, crossval_end, standardization, pca_variability=-1, minmax_range=[-1,1], train_scaler=None, test_scaler=None, pca=None):
 		"""Cut out the cross validation window, eliminate NaN values (they will be masked out in the graphics anyway),
