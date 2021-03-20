@@ -1,5 +1,6 @@
 from pathlib import Path
 import numpy as np
+import xarray as xr
 
 from .casts import Cast
 
@@ -45,7 +46,7 @@ class Reader:
 		return 'Single-Point', ret
 
 
-	def read_multiple_ncdf(self, dir_path, observations_filename=None, latitude_key='latitude', longitude_key='longitude', time_key='time'):
+	def read_multiple_ncdf(self, dir_path, observations_filename=None, latitude_key='latitude', longitude_key='longitude', time_key='time', obs_time_key='time'):
 		"""reads all ncdf files in your directory path
 		---------------------------------------------------------------------------
 		dir_path (string) - path to directory storing separate ncdf files for each model, and observations
@@ -72,28 +73,32 @@ class Reader:
 			assert (Path(dir_path) / observations_filename).is_file(), "Not a valid file path {}".format(str(Path(dir_path) / observations_filename)) #make sure its a valid file
 			#open the observations nc file
 			Obs_DS = xr.open_dataset(Path(dir_path) / observations_filename, decode_times=False)
-			Obs_DS = Obs_DS.rename_vars({latitude_key:'latitude', longitude_key:'longitude', time_key:'time'})
+			Obs_DS = Obs_DS.rename_vars({latitude_key:'latitude', longitude_key:'longitude', obs_time_key:'time'})
 			if 'M' in Obs_DS.coords:
 				Obs_DS = Obs_DS.mean(dim='M')
+			if 'L' in Obs_DS.coords:
+				Obs_DS = Obs_DS.mean(dim='L')
 			Obs_DS = Obs_DS.squeeze()
-			for var_name, data in DS.data_vars.items(): #there should be only one - we're not worryign if there's more than that
+			for var_name, data in Obs_DS.data_vars.items(): #there should be only one - we're not worryign if there's more than that
 				dv = data.values.squeeze()
 				dv = dv.transpose(*get_transpose_order(Obs_DS))
-				ret.add_data('Obs', dv)
+				ret.add_obs( dv)
 
 		#open all model data nc files
 		model_data_files, model_data = [], []
 		for file in Path('.').glob('{}/*'.format(dir_path)):
 			if str(file).split('/')[-1] != str(observations_filename):
 				model_data_files.append(file)
-		DS = xr.open_mfdataset(model_data_files, decode_times=False)
+		DS = xr.open_mfdataset(model_data_files, combine='nested', compat='override', decode_times=False)
 		DS = DS.rename_vars({latitude_key:'latitude', longitude_key:'longitude', time_key:'time'})
 		if 'M' in DS.coords:
 			DS = DS.mean(dim='M')
+		if 'L' in DS.coords:
+			DS = DS.mean(dim='L')
 		DS, ndx = DS.squeeze(), 1
 		for var_name, data in DS.data_vars.items():
 			dv = data.values.squeeze()
-			dv = dv.transpose(*get_transpose_order(DS)) if axis_order == 'txy' else data.values
+			dv = dv.transpose(*get_transpose_order(DS))
 			ret.add_data('Model{}'.format(ndx), dv)
 
 		#for now we are assuming all have same dimensions
@@ -102,6 +107,6 @@ class Reader:
 		for data_key in ret.available_data():
 			ret.add_lats(data_key, lats)
 			ret.add_lons(data_key, lons)
-			ret.add_years(data_key, years)
+			ret.add_years( years)
 
 		return 'Multi-Point', ret

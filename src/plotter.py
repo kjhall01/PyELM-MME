@@ -80,7 +80,7 @@ class Plotter:
 		hcell, wcell = 0.3, 1.
 		hpad, wpad = 0, 0
 		#fig=plt.figure(figsize=(2*len(rows)*wcell+wpad, 3*len(rows)*hcell+hpad))
-		fig=plt.figure(figsize=(10,7))
+		fig=plt.figure(figsize=(18,6))
 
 		ax = fig.add_subplot(111)
 		ax.axis('off')

@@ -1,4 +1,5 @@
 import numpy as np
+import xarray as xr
 
 #for now not supporting xarray DataSets
 class Cast:
@@ -17,6 +18,7 @@ class Cast:
 			axes = (0,3) if len(self.data[key].shape) == 3 else (0)
 
 		model_data = np.asarray(model_data)
+		print(np.nanmean(model_data))
 		self.nanmask = np.sum(np.isnan(model_data), axis=axes).astype(bool)
 		return True
 
@@ -118,7 +120,8 @@ class Cast:
 			self.add_years( np.arange(data.shape[1]))
 
 		if len(data.shape) == 3: #lat x lon x years
-			self.data[key][lat_ndx, lon_ndx, :] = data
+
+			self.data[key] = data
 			self.add_lats(key, np.arange(data.shape[0])) #setting defaults
 			self.add_lons(key, np.arange(data.shape[1])) #setting defaults
 			self.add_years( np.arange(data.shape[2])) #setting defaults
@@ -143,7 +146,7 @@ class Cast:
 			#self.add_years( np.arange(data.shape[1]))
 
 		if len(data.shape) == 3: #lat x lon x years
-			self.data[key][lat_ndx, lon_ndx, :] = data
+			self.data[key] = data
 			self.add_lats(key, np.arange(data.shape[0])) #setting defaults
 			self.add_lons(key, np.arange(data.shape[1])) #setting defaults
 			#self.add_years( np.arange(data.shape[2])) #setting defaults
