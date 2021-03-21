@@ -123,24 +123,24 @@ class Plotter:
 			if key in methods:
 				labels.append(key)
 				if data is None:
-					data = casts.data[key].ravel().reshape(-1,1) if point is None else casts.mask_nans_var(casts.data[key])[plot_latkey[key]][plot_lonkey[key]]
+					data = casts.data[key].ravel().reshape(-1,1) if point is None else casts.data[key][plot_latkey[key]][plot_lonkey[key]].ravel().reshape(-1,1)
 				else:
-					data = np.hstack((data, casts.data[key].ravel().reshape(-1,1) if point is None else casts.mask_nans_var(casts.data[key])[plot_latkey[key]][plot_lonkey[key]]))
+					data = np.hstack((data, casts.data[key].ravel().reshape(-1,1) if point is None else casts.data[key][plot_latkey[key]][plot_lonkey[key]].ravel().reshape(-1,1)))
 
 		for key in casts.available_members():
 			if members:
 				labels.append(key)
 				if data is None:
-					data = casts.data[key].ravel().reshape(-1,1) if point is None else casts.mask_nans_var(casts.data[key])[plot_latkey[key]][plot_lonkey[key]]
+					data = casts.data[key].ravel().reshape(-1,1) if point is None else casts.data[key][plot_latkey[key]][plot_lonkey[key]].ravel().reshape(-1,1)
 				else:
-					data = np.hstack((data, casts.data[key].ravel().reshape(-1,1) if point is None else casts.mask_nans_var(casts.data[key])[plot_latkey[key]][plot_lonkey[key]]))
+					data = np.hstack((data, casts.data[key].ravel().reshape(-1,1) if point is None else casts.data[key][plot_latkey[key]][plot_lonkey[key]].ravel().reshape(-1,1)))
 
 		if obs:
 			labels.append('Obs')
 			if data is None:
-				data = casts.data['Obs'].ravel().reshape(-1,1) if point is None else casts.data['Obs'][plot_latkey['Obs']][plot_lonkey['Obs']]
+				data = casts.data['Obs'].ravel().reshape(-1,1) if point is None else casts.data['Obs'][plot_latkey['Obs']][plot_lonkey['Obs']].ravel().reshape(-1,1)
 			else:
-				data = np.hstack((data, casts.data['Obs'].ravel().reshape(-1,1) if point is None else casts.data['Obs'][plot_latkey['Obs']][plot_lonkey['Obs']]))
+				data = np.hstack((data, casts.data['Obs'].ravel().reshape(-1,1) if point is None else casts.data['Obs'][plot_latkey['Obs']][plot_lonkey['Obs']].ravel().reshape(-1,1)))
 		fig, ax = plt.subplots(figsize=(10,6))
 		ax.boxplot(data, whis=255)
 		plt.xticks(labels=labels, ticks=[i+1 for i in range(len(labels))] )
@@ -149,10 +149,10 @@ class Plotter:
 
 	def bar_plot(self, fcst='forecasts', methods=[ 'EM', 'ELM', 'MLR'], members=False, point=None, obs=True):
 		casts = getattr(self.mme, fcst)
-
+		hcst = getattr(self.mme, 'hindcasts')
 		if point is not None:
 			assert len(point) == 2, 'point must be a lat/long pair in form of a list'
-			plot_latkey, plot_lonkey = casts.point_to_ndx(point)
+			plot_latkey, plot_lonkey = hcst.point_to_ndx(point)
 
 		plt.figure(figsize=(10,5))
 		colors = ['r', 'g', 'm', 'b']
@@ -194,7 +194,7 @@ class Plotter:
 		plt.legend()
 		plt.show()
 
-	def map(self, fcst='hindcasts', data='skill', methods=[ 'EM', 'ELM', 'MLR'], members=False, obs=False, metrics=['SpearmanCoef', 'PearsonCoef', 'RMSE', 'MSE',  'MAE', 'IOA']):
+	def map(self, fcst='hindcasts', data='skill', methods=[ 'EM', 'ELM', 'MLR'], members=False, obs=False, metrics=['SpearmanCoef', 'PearsonCoef', 'RMSE', 'MSE',  'MAE', 'IOA'], zerobound=True):
 		casts = getattr(self.mme, fcst)
 		assert data in ['skill', 'data'], 'invalid data to map selection'
 		x_keys, method_keys = [], []
@@ -246,8 +246,11 @@ class Plotter:
 					CS1 = ax[i][j].pcolormesh(np.linspace(casts.lons['Obs'][0], casts.lons['Obs'][-1],num=casts.lons['Obs'].shape[0]), np.linspace(casts.lats['Obs'][0], casts.lats['Obs'][-1], num=casts.lats['Obs'].shape[0]), var, vmin=0, vmax=1, cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
 				elif x_keys[j] in ['RMSE']:
 					CS1 = ax[i][j].pcolormesh(np.linspace(casts.lons['Obs'][0], casts.lons['Obs'][-1],num=casts.lons['Obs'].shape[0]), np.linspace(casts.lats['Obs'][0], casts.lats['Obs'][-1], num=casts.lats['Obs'].shape[0]), var, cmap='Reds') #adds probability of below normal where below normal is most likely  and nan everywhere else
+				elif zerobound:
+					CS1 = ax[i][j].pcolormesh(np.linspace(casts.lons['Obs'][0], casts.lons['Obs'][-1],num=casts.lons['Obs'].shape[0]), np.linspace(casts.lats['Obs'][0], casts.lats['Obs'][-1], num=casts.lats['Obs'].shape[0]), var, vmin=0, cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
 				else:
 					CS1 = ax[i][j].pcolormesh(np.linspace(casts.lons['Obs'][0], casts.lons['Obs'][-1],num=casts.lons['Obs'].shape[0]), np.linspace(casts.lats['Obs'][0], casts.lats['Obs'][-1], num=casts.lats['Obs'].shape[0]), var, cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
+
 
 				axins = inset_axes(ax[i][j], width="100%", height="5%",  loc='lower center', bbox_to_anchor=(0., -0.2, 1, 1), bbox_transform=ax[i][j].transAxes, borderpad=0.15,) #describes where colorbar should go
 				cbar_bdet = fig.colorbar(CS1, ax=ax[i][j],  cax=axins, orientation='horizontal', pad = 0.02) #add colorbar based on hindcast data
@@ -255,7 +258,7 @@ class Plotter:
 		plt.show()
 
 	def map_skill(self, fcst='hindcasts', methods=['EM', 'ELM', 'MLR'], members=False, obs=False, metrics=['SpearmanCoef', 'PearsonCoef', 'RMSE', 'MAE', 'IOA']):
-		self.map(methods=methods, fcst=fcst, members=members, metrics=metrics, data='skill', obs=obs)
+		self.map(methods=methods, fcst=fcst, members=members, metrics=metrics, data='skill', obs=obs, zerobound=False)
 
 	def map_forecasts(self, fcst='hindcasts', methods=['EM', 'ELM', 'MLR'], members=False, obs=False):
 		self.map(methods=methods, fcst=fcst, members=members, data='data' , obs=obs)
