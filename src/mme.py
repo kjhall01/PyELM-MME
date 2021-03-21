@@ -14,24 +14,10 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 import pickle, copy
-import warnings
 from scipy import stats
 from scipy.interpolate import make_interp_spline
 from sklearn.decomposition import PCA
 
-import cartopy.crs as ccrs
-from cartopy import feature
-import cartopy.mpl.ticker as cticker
-import matplotlib.pyplot as plt
-import matplotlib.colors as colors
-import matplotlib.ticker as ticker
-from matplotlib.colors import LinearSegmentedColormap
-from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-import cartopy.feature as cfeature
-from cartopy.io.shapereader import Reader
-from cartopy.feature import ShapelyFeature
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-warnings.filterwarnings("ignore")
 
 class MME:
 	"""Multi-Model Ensemble class - stores & handles data
@@ -139,19 +125,40 @@ class MME:
 		if self.verbose:
 			print('Saved {} data to {}'.format(fcst, fname))
 
+	def export_ncdf(self, fname, fcst='hindcasts'):
+		casts = getattr(self, fcst)
+		data_vars = {}
+		for key in casts.available_data():
+			data_vars[key] = (['latitude', 'longitude', 'time'], casts.data[key])
+		coords = dict(
+			latitude=(['latitude'], np.squeeze(casts.lats['Obs']) if 'Obs' in casts.lats.keys() else np.squeeze(casts.lats[[key for key in self.lats.keys()][0]])),
+			longitude=(['longitude'], np.squeeze(casts.lons['Obs']) if 'Obs' in casts.lons.keys() else np.squeeze(casts.lons[[key for key in self.lons.keys()][0]])),
+			time=(['time'], np.squeeze(casts.years))
+		)
+		DS = xr.Dataset(data_vars=data_vars, coords=coords)
+		DS.to_netcdf(path=fname)
+		if self.verbose:
+			print('saved to {}'.format(fname))
+
 	#------------------ Stuff for Making Xval Hindcast ------------------------#
 	def train_mmes(self, mme_methodologies, args):
 		if self.verbose:
 			print('\nComputing MMEs')
 		for method in mme_methodologies:
-			if self.verbose:
-				print(method)
 			if method == 'MLR':
 				self.cross_validate(method, xval_window=args['mlr_xval_window'], standardization=args['mlr_standardization'], fit_intercept=args['mlr_fit_intercept'])
 			elif method == 'ELM':
 				self.cross_validate(method, xval_window=args['elm_xval_window'], hidden_layer_neurons=args['elm_hidden_layer_neurons'], activation=args['elm_activation'], standardization=args['elm_standardization'], minmax_range=args['elm_minmax_range'])
 			elif method == 'EM':
-				self.cross_validate(method, xval_window=args['em_xval_window'], standardization=None)
+				#self.cross_validate(method, xval_window=args['em_xval_window'], standardization=None)
+				model_data = []
+				for key in self.hindcasts.available_members():
+					model_data.append(self.hindcasts.data[key])
+				model_data = np.asarray(model_data)
+				self.hindcasts.add_data('EM', np.nanmean(model_data, axis=0), mm=False)
+				self.hindcasts.add_lats('EM', self.hindcasts.lats['Obs'])
+				self.hindcasts.add_lons('EM', self.hindcasts.lons['Obs'])
+				print('EM [' + 25*'*' + ']' ) #calculating EM during input now
 			else:
 				assert False, 'invalid mme method {}'.format(method)
 
@@ -196,15 +203,31 @@ class MME:
 		"""wrapper function for creating cross-validated hindcasts using leave-N-out xval method, either for one point or for multiple points """
 		cast = getattr(self, fcst)
 		key = cast.available_data()[0]
+
+		total = cast.lats['Obs'].shape[0] *  cast.lons['Obs'].shape[0]
+		steps = [total / 25.0 * i for i in range(26)]
+		ndx, step_ndx = 0, 0
+		if self.verbose:
+			print(model_type + ' [' + ' '*25 + ']', end='\r')
 		for i in range(cast.lats['Obs'].shape[0]):
 			for j in range(cast.lons['Obs'].shape[0]):
-				lat_ndx, lon_ndx = i if cast.lats['Obs'].shape[0] > 1 else -1, j if cast.lats['Obs'].shape[0] > 1 else -1
+				if ndx > steps[step_ndx] and self.verbose:
+					print(model_type + ' [' + '*'*step_ndx + (25-step_ndx)*' ' + ']', end='\r')
+					step_ndx += 1
+				ndx += 1
+				lat_ndx, lon_ndx = i if cast.lats['Obs'].shape[0] > 1 else -1, j if cast.lons['Obs'].shape[0] > 1 else -1
 				data = cast.assemble_training_data(lat_ndx=lat_ndx, lon_ndx=lon_ndx)
 				hindcasts, models = self._xval1D(data, model_type, xval_window=xval_window, standardization=standardization, pca_variability=pca_variability, hidden_layer_neurons=hidden_layer_neurons, activation=activation, max_iter=max_iter, normalize=normalize, fit_intercept=fit_intercept, alpha=alpha, solver=solver, W=W, minmax_range=minmax_range)
 				cast.add_data(model_type, hindcasts, lat_ndx=lat_ndx, lon_ndx=lon_ndx, mm=False)
+				cast.add_lats(model_type, cast.lats['Obs'])
+				cast.add_lons(model_type, cast.lons['Obs'])
+				cast.add_years( np.squeeze(cast.years))
+
 				for k in range(hindcasts.shape[0]):
 					cast.add_spm(model_type, models[k], lat_ndx=lat_ndx, lon_ndx=lon_ndx, year_ndx=k )
 				cast.replace_nans()
+		if self.verbose:
+			print(model_type + ' [' + '*'*25+ ']')
 
 
 	#------------------ Stuff for Evaluating Skill ------------------------#
@@ -239,79 +262,133 @@ class MME:
 	def IOA(self, fcst='hindcasts'):
 		"""computes IOA for each point"""
 		cast = getattr(self, fcst)
-		for key in cast.available_mmes():
+		for key in cast.available_data():
 			cast.replace_nans()
+			total = cast.lats['Obs'].shape[0] *  cast.lons['Obs'].shape[0]
+			steps = [total / 25.0 * i for i in range(26)]
+			ndx, step_ndx = 0, 0
+			if self.verbose:
+				print('  '+ key + ' [' + ' '*25 + ']', end='\r')
 			for i in range(cast.lats[key].shape[0]):
 				for j in range(cast.lons[key].shape[0]):
+					if ndx > steps[step_ndx] and self.verbose:
+						print('  '+key + ' [' + '*'*step_ndx + (25-step_ndx)*' ' + ']', end='\r')
+						step_ndx += 1
+					ndx += 1
 					obs = cast.data['Obs'].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data['Obs'][i,j,:].reshape(-1,1)
 					comp = cast.data[key].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data[key][i,j,:].reshape(-1,1)
 					ioa = np.asarray([self.__index_of_agreement(obs, comp)])
 					cast.save_point_skill(key, 'IOA', ioa, lat_ndx=i, lon_ndx=j)
 			cast.mask_nans_skill()
+			if self.verbose:
+				print('  '+key + ' [' + '*'*25+ ']')
 
 	def MAE(self, fcst='hindcasts'):
 		"""compute mean absolute error for each point"""
 		cast = getattr(self, fcst)
-		for key in cast.available_mmes():
+		for key in cast.available_data():
 			cast.replace_nans()
+			total = cast.lats['Obs'].shape[0] *  cast.lons['Obs'].shape[0]
+			steps = [total / 25.0 * i for i in range(26)]
+			ndx, step_ndx = 0, 0
+			if self.verbose:
+				print('  '+key + ' [' + ' '*25 + ']', end='\r')
 			for i in range(cast.lats[key].shape[0]):
 				for j in range(cast.lons[key].shape[0]):
+					if ndx > steps[step_ndx] and self.verbose:
+						print('  '+key + ' [' + '*'*step_ndx + (25-step_ndx)*' ' + ']', end='\r')
+						step_ndx += 1
+					ndx += 1
 					obs = cast.data['Obs'].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data['Obs'][i,j,:].reshape(-1,1)
 					comp = cast.data[key].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data[key][i,j,:].reshape(-1,1)
 					mae = np.asarray([mean_absolute_error(obs, comp)])
 					cast.save_point_skill(key, 'MAE', mae, lat_ndx=i, lon_ndx=j)
 			cast.mask_nans_skill()
+			if self.verbose:
+				print('  '+key + ' [' + '*'*25+ ']')
 
 	def MSE(self, fcst='hindcasts', squared=True):
 		"""compute mean squared error (or Root Mean Squared Error) for each point """
 		cast = getattr(self, fcst)
 		save_key = 'MSE' if squared else 'RMSE'
-		for key in cast.available_mmes():
+
+		for key in cast.available_data():
+			total = cast.lats['Obs'].shape[0] *  cast.lons['Obs'].shape[0]
+			steps = [total / 25.0 * i for i in range(26)]
+			ndx, step_ndx = 0, 0
+			if self.verbose:
+				print('  '+key + ' [' + ' '*25 + ']', end='\r')
 			cast.replace_nans()
 			for i in range(cast.lats[key].shape[0]):
 				for j in range(cast.lons[key].shape[0]):
+					if ndx > steps[step_ndx] and self.verbose:
+						print('  '+key + ' [' + '*'*step_ndx + (25-step_ndx)*' ' + ']', end='\r')
+						step_ndx += 1
+					ndx += 1
 					obs = cast.data['Obs'].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data['Obs'][i,j,:].reshape(-1,1)
 					comp = cast.data[key].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data[key][i,j,:].reshape(-1,1)
 					mae = np.asarray([mean_squared_error(obs, comp, squared=squared)])
 					cast.save_point_skill(key, save_key, mae, lat_ndx=i, lon_ndx=j)
 			cast.mask_nans_skill()
+			if self.verbose:
+				print('  '+key + ' [' + '*'*25+ ']')
 
 	def Pearson(self, fcst='hindcasts'):
 		"""computes pearson coefficient and pearson p-score for each point """
 		cast = getattr(self, fcst)
-		for key in cast.available_mmes():
+		for key in cast.available_data():
 			cast.replace_nans()
+			total = cast.lats['Obs'].shape[0] *  cast.lons['Obs'].shape[0]
+			steps = [total / 25.0 * i for i in range(26)]
+			ndx, step_ndx = 0, 0
+			if self.verbose:
+				print('  '+key + ' [' + ' '*25 + ']', end='\r')
 			for i in range(cast.lats[key].shape[0]):
 				for j in range(cast.lons[key].shape[0]):
+					if ndx > steps[step_ndx] and self.verbose:
+						print('  '+key + ' [' + '*'*step_ndx + (25-step_ndx)*' ' + ']', end='\r')
+						step_ndx += 1
+					ndx += 1
 					obs = cast.data['Obs'].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data['Obs'][i,j,:].reshape(-1,1)
 					comp = cast.data[key].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data[key][i,j,:].reshape(-1,1)
 					coef, p = stats.pearsonr(np.squeeze(obs).astype(float), np.squeeze(comp).astype(float))
 					cast.save_point_skill(key, 'PearsonCoef', np.asarray([coef]), lat_ndx=i, lon_ndx=j)
 					cast.save_point_skill(key, 'PearsonP', np.asarray([p]), lat_ndx=i, lon_ndx=j)
 			cast.mask_nans_skill()
+			if self.verbose:
+				print('  '+key + ' [' + '*'*25+ ']')
 
 	def Spearman(self, fcst='hindcasts'):
 		"""computes spearman coefficient, and spearman p-value for each point """
 		cast = getattr(self, fcst)
-		for key in cast.available_mmes():
+		for key in cast.available_data():
 			cast.replace_nans()
+			total = cast.lats['Obs'].shape[0] *  cast.lons['Obs'].shape[0]
+			steps = [total / 25.0 * i for i in range(26)]
+			ndx, step_ndx = 0, 0
+			if self.verbose:
+				print('  '+key + ' [' + ' '*25 + ']', end='\r')
 			for i in range(cast.lats[key].shape[0]):
 				for j in range(cast.lons[key].shape[0]):
+					if ndx > steps[step_ndx] and self.verbose:
+						print('  '+key + ' [' + '*'*step_ndx + (25-step_ndx)*' ' + ']', end='\r')
+						step_ndx += 1
+					ndx += 1
 					obs = cast.data['Obs'].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data['Obs'][i,j,:].reshape(-1,1)
 					comp = cast.data[key].reshape(-1,1) if cast.lats[key].shape[0] == 1 and cast.lons[key].shape[0] == 1 else cast.data[key][i,j,:].reshape(-1,1)
 					coef, p = stats.spearmanr(np.squeeze(obs).astype(float), np.squeeze(comp).astype(float))
 					cast.save_point_skill(key, 'SpearmanCoef', np.asarray([coef]), lat_ndx=i, lon_ndx=j)
 					cast.save_point_skill(key, 'SpearmanP', np.asarray([p]), lat_ndx=i, lon_ndx=j)
 			cast.mask_nans_skill()
+			if self.verbose:
+				print('  '+key + ' [' + '*'*25+ ']')
 
 
 	#------------------ Stuff for training RTF models------------------------#
 	def train_rtf_models(self, forecast_methodologies, args):
 		if self.verbose:
-			print('\nComputing MMEs')
+			print('\nTraining RTF Models')
 		for method in forecast_methodologies:
-			if self.verbose:
-				print(method)
 			if method == 'MLR':
 				self.forecast_model(method,  standardization=args['mlr_standardization'], fit_intercept=args['mlr_fit_intercept'])
 			elif method == 'ELM':
@@ -325,16 +402,31 @@ class MME:
 		"""wrapper class for training models on all available data for use in making real time forecasts """
 		hcst, tfcst = getattr(self, hcst), getattr(self, fcst)
 		key = hcst.available_data()[0]
+		total = hcst.lats['Obs'].shape[0] *  hcst.lons['Obs'].shape[0]
+		steps = [total / 25.0 * i for i in range(26)]
+		ndx, step_ndx = 0, 0
+		if self.verbose:
+			print(model_type + ' [' + ' '*25 + ']', end='\r')
 		for i in range(hcst.lats[key].shape[0]):
 			for j in range(hcst.lons[key].shape[0]):
+				if ndx > steps[step_ndx] and self.verbose:
+					print(model_type + ' [' + '*'*step_ndx + (25-step_ndx)*' ' + ']', end='\r')
+					step_ndx += 1
+				ndx += 1
 				lat_ndx, lon_ndx = i if hcst.lats[key].shape[0] > 1 else -1, j if hcst.lats[key].shape[0] > 1 else -1
+
 				data = hcst.assemble_training_data(lat_ndx=lat_ndx, lon_ndx=lon_ndx)
 				forecast, model, scaler, pca = self.forecast_model1D(data, model_type,  standardization=standardization, pca_variability=pca_variability, hidden_layer_neurons=hidden_layer_neurons, activation=activation, max_iter=max_iter, normalize=normalize, fit_intercept=fit_intercept, alpha=alpha, solver=solver, W=W, minmax_range=minmax_range)
 				tfcst.add_data(model_type, forecast, lat_ndx=lat_ndx, lon_ndx=lon_ndx, mm=False)
+				tfcst.add_lats(model_type, hcst.lats['Obs'])
+				tfcst.add_lons(model_type, hcst.lons['Obs'])
+				tfcst.add_years(np.squeeze(hcst.years))
 				tfcst.add_spm(model_type, model, lat_ndx=lat_ndx, lon_ndx=lon_ndx, year_ndx=0 )
 				tfcst.add_scaler(model_type, scaler, lat_ndx=lat_ndx, lon_ndx=lon_ndx, year_ndx=0)
 				tfcst.add_pca(model_type, pca, lat_ndx=lat_ndx, lon_ndx=lon_ndx, year_ndx=0)
 				tfcst.replace_nans()
+		if self.verbose:
+			print(model_type + ' [' + '*'*25+ ']')
 
 	def forecast_model1D(self, data, model_type, standardization='None', pca_variability=-1, hidden_layer_neurons=5, activation='sigm', max_iter=200, normalize=False, fit_intercept=True, alpha=1.0, solver='auto', W=None, minmax_range=[-1,1]):
 		"""train model on all available data, rather than use leave-n-out xvalidation"""
@@ -370,162 +462,3 @@ class MME:
 				out = modelcst.models[model_type][lat_ndx][lon_ndx][0].predict(x_train)
 				out = modelcst.scalers[model_type][lat_ndx][lon_ndx][0].recover(out)
 				fcst.add_data(model_type, out, lat_ndx=lat_ndx, lon_ndx=lon_ndx, mm=False)
-
-	def plot(self, setting='Cross-Validated Hindcasts', point=None, years='NA', methods=None, hindcasts='NA',training_forecasts='NA', metrics='NA', rte_forecasts='NA', mme_members=[], fos=None):
-		"""plot results of data, depending on setting.  Multi-point or single point, controlled by 'setting'
-		---------------------------------------------------------------------------
-			settings:
-				'Cross-Validated Hindcasts': plot values of cross validated forecasts (single point, timeline, multi-point, many maps)
-				'Real-Time Forecasts': plot values of real time forescasts (single-point, timeline, multipoint, maps)
-				'Training Forecasts': plot values of hindcasts produced by models trained on all data (single-point, timeline, multipoint, maps)
-				'xval_hindcast_skill': plot skill metrics of cross  validated hindcasts (SP: grid, MP: maps)
-				'training_forecast_skill': plot skill metrics of hindcasts produced by models trained on all data (single-point, grid, multipoint, maps)
-				'boxplot': plot boxplots of xval hindcast distributions  (SP only)
-				'training_forecast_boxplot': plot boxplots of distributions of hindcasts produced by models trained on all data (SP only)
-				"Real Time Deterministic Forecast": plot deterministic real time forecasts produced by models trained on all available data
-		-------------------------------------------------------------------------"""
-
-		if years == 'NA':
-			years = self.years
-
-		for key in self.hindcasts.keys():
-			self.hindcasts[key][self.hindcasts[key] == -999] = np.nan
-
-
-		if setting == 'Cross-Validated Hindcasts':
-			if methods is None:
-				keys = [key for key in self.hindcasts.keys()]
-			else:
-				keys = [key for key in methods]
-			fig, ax = plt.subplots(nrows=len(years), ncols=len(keys), figsize=(2*len(keys), 4*len(years) ),sharex=True,sharey=True, subplot_kw={'projection': ccrs.PlateCarree()}) #creates pyplot plotgrid with maps
-
-			states_provinces = feature.NaturalEarthFeature(category='cultural', name='admin_0_countries',scale='10m',facecolor='none')#setting more variables
-			for i in range(len(years)): # for each model, but this is always one because were only doing one model
-				for j in range(len(keys)): #for each season
-					ax[i][j].set_extent([np.min(self.lons),np.max(self.lons), np.min(self.lats), np.max(self.lats)], ccrs.PlateCarree()) #sets the lat/long boundaries of the plot area
-					ax[i][j].add_feature(feature.LAND) #adds predefined cartopy land feature - gets overwritten
-					pl=ax[i][j].gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle=(0,(2,4))) #adds dotted gridlines to plot
-					pl.xlabels_top, pl.ylabels_left, pl.ylabels_right, pl.xlabels_bottom  = False, True, False, True #adds labels to dashed gridlines on left and bottom
-					pl.xformatter, pl.yformatter = LONGITUDE_FORMATTER, LATITUDE_FORMATTER #sets formatters - arcane cartopy stuff
-
-					ax[i][j].add_feature(states_provinces, edgecolor='black') #adds the cartopy default map to the plot
-
-					if j == 0: # if this is the leftmost plot
-						ax[i][j].text(-0.25, 0.5, 'Year {}'.format(str(years[i])),rotation='vertical', verticalalignment='center', horizontalalignment='center', transform=ax[i][j].transAxes) #print title vertially on the left side
-					if i == 0: # if this is the top plot
-						ax[i][j].set_title("{} Cross-Validated hindcast".format(keys[j])) #print season on top of each plot
-
-					CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.hindcasts[keys[j]][:,:,i], cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
-
-					axins = inset_axes(ax[i][j], width="5%", height="100%",  loc='center right', bbox_to_anchor=(0., 0., 1.15, 1), bbox_transform=ax[i][j].transAxes, borderpad=0.1,) #describes where colorbar should go
-					cbar_bdet = fig.colorbar(CS1, ax=ax[i][j],  cax=axins, orientation='vertical', pad = 0.02) #add colorbar based on hindcast data
-					cbar_bdet.set_label('Rainfall (mm)')# add colorbar label
-			plt.show()
-		elif setting == "xval_hindcast_skill":
-			if metrics == 'NA':
-				metrics = [key for key in self.xval_hindcast_metrics.keys()]
-			if hindcasts == 'NA':
-				hindcasts = [key for key in self.hindcasts.keys()]
-			keys = [key for key in metrics ]
-			forkeys = [key for key in hindcasts]
-			fig, ax = plt.subplots(nrows=len(forkeys), ncols=len(keys), figsize=(4*len(forkeys), 4*len(keys)),sharex=True,sharey=True, subplot_kw={'projection': ccrs.PlateCarree()}) #creates pyplot plotgrid with maps
-
-			states_provinces = feature.NaturalEarthFeature(category='cultural', name='admin_0_countries',scale='10m',facecolor='none')#setting more variables
-			for i in range(len(forkeys)): # for each model, but this is always one because were only doing one model
-				for j in range(len(keys)): #for each season
-					ax[i][j].set_extent([np.min(self.lons),np.max(self.lons), np.min(self.lats), np.max(self.lats)], ccrs.PlateCarree()) #sets the lat/long boundaries of the plot area
-					ax[i][j].add_feature(feature.LAND) #adds predefined cartopy land feature - gets overwritten
-					pl=ax[i][j].gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle=(0,(2,4))) #adds dotted gridlines to plot
-					pl.xlabels_top, pl.ylabels_left, pl.ylabels_right, pl.xlabels_bottom  = False, False, False, False #adds labels to dashed gridlines on left and bottom
-					pl.xformatter, pl.yformatter = LONGITUDE_FORMATTER, LATITUDE_FORMATTER #sets formatters - arcane cartopy stuff
-
-					ax[i][j].add_feature(states_provinces, edgecolor='black') #adds the cartopy default map to the plot
-
-					if j == 0: # if this is the leftmost plot
-						ax[i][j].text(-0.25, 0.5, 'hindcast: {}'.format(str(forkeys[i])),rotation='vertical', verticalalignment='center', horizontalalignment='center', transform=ax[i][j].transAxes) #print title vertially on the left side
-					if i == 0: # if this is the top plot
-						ax[i][j].set_title("Metric {}".format(keys[j])) #print season on top of each plot
-
-					if keys[j] in ['SpearmanCoef', 'PearsonCoef']:
-						CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.xval_hindcast_metrics[keys[j]][forkeys[i]], vmin=-1, vmax=1, cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
-					elif keys[j] in ['IOA']:
-						CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.xval_hindcast_metrics[keys[j]][forkeys[i]], vmin=0, vmax=1, cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
-					elif keys[j] in ['RMSE']:
-						CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.xval_hindcast_metrics[keys[j]][forkeys[i]], cmap='Reds') #adds probability of below normal where below normal is most likely  and nan everywhere else
-					else:
-						CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.xval_hindcast_metrics[keys[j]][forkeys[i]], cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
-
-					axins = inset_axes(ax[i][j], width="100%", height="5%",  loc='lower center', bbox_to_anchor=(0., -0.15, 1, 1), bbox_transform=ax[i][j].transAxes, borderpad=0.1,) #describes where colorbar should go
-					cbar_bdet = fig.colorbar(CS1, ax=ax[i][j],  cax=axins, orientation='horizontal', pad = 0.02) #add colorbar based on hindcast data
-			plt.subplots_adjust(left=0.125, right=0.9, bottom=0.1, top=0.9, wspace=0.3, hspace=0.5)
-			plt.show()
-		elif setting == "training_forecast_skill":
-			if metrics == 'NA':
-				metrics = [key for key in self.training_forecast_metrics.keys()]
-			if training_forecasts == 'NA':
-				training_forecasts = [key for key in self.training_forecasts.keys()]
-			keys = [key for key in metrics ]
-			forkeys = [key for key in training_forecasts]
-			fig, ax = plt.subplots(nrows=len(forkeys), ncols=len(keys), figsize=(4*len(forkeys), 4*len(keys)),sharex=True,sharey=True, subplot_kw={'projection': ccrs.PlateCarree()}) #creates pyplot plotgrid with maps
-
-			states_provinces = feature.NaturalEarthFeature(category='cultural', name='admin_0_countries',scale='10m',facecolor='none')#setting more variables
-			for i in range(len(forkeys)): # for each model, but this is always one because were only doing one model
-				for j in range(len(keys)): #for each season
-					ax[i][j].set_extent([np.min(self.lons),np.max(self.lons), np.min(self.lats), np.max(self.lats)], ccrs.PlateCarree()) #sets the lat/long boundaries of the plot area
-					ax[i][j].add_feature(feature.LAND) #adds predefined cartopy land feature - gets overwritten
-					pl=ax[i][j].gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle=(0,(2,4))) #adds dotted gridlines to plot
-					pl.xlabels_top, pl.ylabels_left, pl.ylabels_right, pl.xlabels_bottom  = False, False, False, False #adds labels to dashed gridlines on left and bottom
-					pl.xformatter, pl.yformatter = LONGITUDE_FORMATTER, LATITUDE_FORMATTER #sets formatters - arcane cartopy stuff
-
-					ax[i][j].add_feature(states_provinces, edgecolor='black') #adds the cartopy default map to the plot
-
-					if j == 0: # if this is the leftmost plot
-						ax[i][j].text(-0.25, 0.5, 'hindcast: {}'.format(str(forkeys[i])),rotation='vertical', verticalalignment='center', horizontalalignment='center', transform=ax[i][j].transAxes) #print title vertially on the left side
-					if i == 0: # if this is the top plot
-						ax[i][j].set_title("Metric {}".format(keys[j])) #print season on top of each plot
-
-					if keys[j] in ['SpearmanCoef', 'PearsonCoef']:
-						CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.training_forecast_metrics[keys[j]][forkeys[i]], vmin=-1, vmax=1, cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
-					elif keys[j] in ['IOA']:
-						CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.training_forecast_metrics[keys[j]][forkeys[i]], vmin=0, vmax=1, cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
-					elif keys[j] in ['RMSE']:
-						CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.training_forecast_metrics[keys[j]][forkeys[i]], cmap='Reds') #adds probability of below normal where below normal is most likely  and nan everywhere else
-					else:
-						CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.training_forecast_metrics[keys[j]][forkeys[i]], cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
-
-					axins = inset_axes(ax[i][j], width="100%", height="5%",  loc='lower center', bbox_to_anchor=(0., -0.15, 1, 1), bbox_transform=ax[i][j].transAxes, borderpad=0.1,) #describes where colorbar should go
-					cbar_bdet = fig.colorbar(CS1, ax=ax[i][j],  cax=axins, orientation='horizontal', pad = 0.02) #add colorbar based on hindcast data
-			plt.subplots_adjust(left=0.125, right=0.9, bottom=0.1, top=0.9, wspace=0.3, hspace=0.5)
-			plt.show()
-		elif setting == "Real Time Deterministic Forecast":
-			if rte_forecasts == 'NA':
-				rte_forecasts = [key for key in self.real_time_forecasts.keys()]
-
-			years = [i for i in range( self.real_time_forecasts[rte_forecasts[0]].shape[2])]
-			fig, ax = plt.subplots(nrows=len(years), ncols=len(rte_forecasts), figsize=(10*len(years), 40*len(rte_forecasts)),sharex=True,sharey=True, subplot_kw={'projection': ccrs.PlateCarree()}) #creates pyplot plotgrid with maps
-			if len(years) == 1:
-				ax = [ax]
-			if len(rte_forecasts) == 1:
-				ax = [ax]
-			states_provinces = feature.NaturalEarthFeature(category='cultural', name='admin_0_countries',scale='10m',facecolor='none')#setting more variables
-			for i in range(len(years)): # for each model, but this is always one because were only doing one model
-				for j in range(len(rte_forecasts)): #for each season
-					ax[i][j].set_extent([np.min(self.lons),np.max(self.lons), np.min(self.lats), np.max(self.lats)], ccrs.PlateCarree()) #sets the lat/long boundaries of the plot area
-					ax[i][j].add_feature(feature.LAND) #adds predefined cartopy land feature - gets overwritten
-					pl=ax[i][j].gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=1, color='gray', alpha=0.5, linestyle=(0,(2,4))) #adds dotted gridlines to plot
-					pl.xlabels_top, pl.ylabels_left, pl.ylabels_right, pl.xlabels_bottom  = False, False, False, False #adds labels to dashed gridlines on left and bottom
-					pl.xformatter, pl.yformatter = LONGITUDE_FORMATTER, LATITUDE_FORMATTER #sets formatters - arcane cartopy stuff
-
-					ax[i][j].add_feature(states_provinces, edgecolor='black') #adds the cartopy default map to the plot
-
-					if j == 0: # if this is the leftmost plot
-						ax[i][j].text(-0.25, 0.5, 'Year: {}'.format(str(years[i])),rotation='vertical', verticalalignment='center', horizontalalignment='center', transform=ax[i][j].transAxes) #print title vertially on the left side
-					if i == 0: # if this is the top plot
-						ax[i][j].set_title("{}".format(rte_forecasts[j])) #print season on top of each plot
-
-						CS1 = ax[i][j].pcolormesh(np.linspace(self.lons[0], self.lons[-1],num=self.lons.shape[0]), np.linspace(self.lats[0], self.lats[-1], num=self.lats.shape[0]), self.real_time_forecasts[rte_forecasts[j]][:,:,years[i]], cmap='RdYlBu') #adds probability of below normal where below normal is most likely  and nan everywhere else
-
-					axins = inset_axes(ax[i][j], width="100%", height="5%",  loc='lower center', bbox_to_anchor=(0., -0.15, 1, 1), bbox_transform=ax[i][j].transAxes, borderpad=0.1,) #describes where colorbar should go
-					cbar_bdet = fig.colorbar(CS1, ax=ax[i][j],  cax=axins, orientation='horizontal', pad = 0.02) #add colorbar based on hindcast data
-			plt.subplots_adjust(left=0.125, right=0.9, bottom=0.1, top=0.9, wspace=0.3, hspace=0.5)
-			plt.show()

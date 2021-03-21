@@ -11,6 +11,25 @@ class Cast:
 		self.lats, self.lons = {}, {}
 		self.years, self.pcas = {}, {}
 
+
+	def point_to_ndx(self, point):
+		plot_latkey, plot_lonkey = {}, {}
+		for key in self.available_data():
+			plot_latkey[key], found_yet = -1000, False
+			for lat in range(len(self.lats[key])):
+				if self.lats[key][lat] >= point[0] and not found_yet:
+					plot_latkey[key] = lat
+					found_yet = True
+
+
+			plot_lonkey[key], found_yet = -1000, False
+			for lon in range(len(self.lons[key])):
+				if self.lons[key][lon] >= point[1] and not found_yet:
+					plot_lonkey[key] = lon
+					found_yet = True
+		return plot_latkey, plot_lonkey
+
+
 	def get_nanmask(self):
 		model_data = []
 		for key in self.available_data():
@@ -18,7 +37,6 @@ class Cast:
 			axes = (0,3) if len(self.data[key].shape) == 3 else (0)
 
 		model_data = np.asarray(model_data)
-		print(np.nanmean(model_data))
 		self.nanmask = np.sum(np.isnan(model_data), axis=axes).astype(bool)
 		return True
 
@@ -31,7 +49,7 @@ class Cast:
 		return True
 
 	def replace_nans_skill(self):
-		for key in self.available_skill():
+		for key in self.available_skill1():
 			for method in self.skill[key].keys():
 				if len(self.skill[key][method].shape) == 3:
 					self.skill[key][method][self.nanmask, :] = np.random.randint(-1000, -900, self.skill[key].shape)[self.nanmask,:]
@@ -47,23 +65,30 @@ class Cast:
 				self.data[key][self.nanmask] = np.nan
 		return True
 
+	def mask_nans_var(self, var):
+		try:
+			x  = self.nanmask
+		except:
+			self.get_nanmask()
+		var[self.nanmask] = np.nan
+		return var
+
 	def mask_nans_skill(self):
-		for key in self.available_skill():
+		for key in self.available_skill1():
 			for method in self.skill[key].keys():
 				if len(self.skill[key][method].shape) == 3:
 					self.skill[key][method][self.nanmask] = np.nan
 				else:
 					pass
-					#self.skill[key][method][np.sum(self.nanmask)] = np.nan #if anything in nanmask is 1, set skill to nan
 		return True
 
 	def assemble_training_data(self, lat_ndx=-1, lon_ndx=-1):
 		model_data = []
 		for key in self.model_members:
-			time_series_data_at_pt_xy = self.data[key] if lat_ndx==-1 and lon_ndx == -1 else self.data[key][lat_ndx, lon_ndx,:]
+			time_series_data_at_pt_xy = self.data[key] if lat_ndx==-1 and lon_ndx == -1 else self.data[key][lat_ndx, lon_ndx,:].reshape(-1,1)
 			model_data.append(time_series_data_at_pt_xy)
-		model_data = np.asarray(model_data).squeeze().transpose(1,0)
-		obs = self.data['Obs'] if lat_ndx == -1 and lon_ndx == -1 else self.data['Obs'][lat_ndx, lon_ndx, :]
+		model_data = np.asarray(model_data).squeeze().transpose(1,0) if lat_ndx==-1 and lon_ndx == -1 else np.asarray(model_data).squeeze().transpose(1,0)
+		obs = self.data['Obs'] if lat_ndx == -1 and lon_ndx == -1 else self.data['Obs'][lat_ndx, lon_ndx, :].reshape(-1,1)
 		data = np.hstack((self.years, obs, model_data))
 		return data
 
@@ -92,8 +117,12 @@ class Cast:
 		assert len(lons.shape) == 1, 'lats must be 1d array'
 		self.lons[key] = lons # shape (m)
 
-	def available_skill(self):
+	def available_skill2(self, key):
+		return sorted([key for key in self.skill[key].keys()])
+
+	def available_skill1(self):
 		return sorted([key for key in self.skill.keys()])
+
 
 	def available_members(self):
 		return sorted([key for key in self.data.keys() if key in self.model_members ])
@@ -138,30 +167,33 @@ class Cast:
 		if mm:
 			self.model_members.append(key)
 
+		if lat_ndx == -1 and lon_ndx == -1:
+			self.data[key] = data  		#data[key] can either be (1,m) or [lat, lon, time]
+		else:
+			self.data[key][lat_ndx, lon_ndx, :] = np.squeeze(data)
+		self.add_lats(key, np.arange(1)) #setting default
+		self.add_lons(key, np.arange(1)) #setting defaults
 
-		if len(data.shape) == 2: #1 x years
-			self.data[key] = data 		#data[key] can either be (1,m) or [lat, lon, time]
-			self.add_lats(key, np.arange(1)) #setting default
-			self.add_lons(key, np.arange(1)) #setting defaults
-			#self.add_years( np.arange(data.shape[1]))
+		try:
+			x = self.scalers[key]
+		except:
+			self.scalers[key] = [[[0 for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
 
-		if len(data.shape) == 3: #lat x lon x years
-			self.data[key] = data
-			self.add_lats(key, np.arange(data.shape[0])) #setting defaults
-			self.add_lons(key, np.arange(data.shape[1])) #setting defaults
-			#self.add_years( np.arange(data.shape[2])) #setting defaults
-
-		#model at lat=1, lon=2, year=3 accessed by self.models[1][2][3]
-		self.scalers[key] = [[[0 for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
-		self.models[key] = [[[j+i+k for i in range(self.years.shape[0])] for j in range(data.shape[0])] for k in range(data.shape[1])]
-		self.pcas[key] = [[[j+i+k for i in range(self.years.shape[0])] for j in range(data.shape[0])] for k in range(data.shape[1])]
+		try:
+			x = self.models[key]
+		except:
+			self.models[key] = [[[j+i+k for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
+		try:
+			x = self.pcas[key]
+		except:
+			self.pcas[key] = [[[j+i+k for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
 
 
 	def save_point_skill(self, method_key, metric_key, data, lat_ndx=-1, lon_ndx=-1):
 		assert len(data.shape) == 1 and data.shape[0] == 1, 'must be singular array'
 		assert lon_ndx < len(self.lons[method_key]), 'lon ndx out of range'
 		assert lat_ndx < len(self.lats[method_key]), 'lat ndx out of range'
-		if method_key not in self.available_skill():
+		if method_key not in self.available_skill1():
 			self.skill[method_key] = {}
 
 		if metric_key not in self.skill[method_key].keys():
