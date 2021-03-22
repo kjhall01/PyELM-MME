@@ -48,7 +48,7 @@ class MME:
 			forecast_pca(s) (dict) - stores pca objects trained on all training data for use in transforming new rtf data the same way
 	---------------------------------------------------------------------------"""
 	#------------------ Stuff for Manipulating MME Data ------------------------#
-	def __init__(self, reader_ret, verbose=True):
+	def __init__(self, reader_ret, verbose=False):
 		self.type, self.hindcasts = reader_ret
 		self.verbose = verbose
 		if 'Obs' not in self.hindcasts.available_data():
@@ -59,6 +59,7 @@ class MME:
 	def add_forecast(self, reader_ret):
 		newfcst_type, self.forecasts = reader_ret
 		self.training_forecasts = copy.deepcopy(self.hindcasts)
+		self.forecasts.lats, self.forecasts.lons = self.training_forecasts.lats, self.training_forecasts.lons
 		assert newfcst_type == self.type, 'must have 2d data for a 2d mme, and 1d for 1d lol'
 		return True
 
@@ -110,10 +111,13 @@ class MME:
 		x_test, y_test = test_data[:, 2:], test_data[:, 1].reshape(-1,1)
 		return x_train, y_train, x_test, y_test, train_scaler, test_scaler, pca
 
-	def export_csv(self, fname, fcst='hindcasts'):
+	def export_csv(self, fname, fcst='hindcasts', obs=True):
 		"""saves 1D data to csv/tsv format - 2D not implemented """
 		casts = getattr(self, fcst)
-		data = np.hstack((casts.years.reshape(-1,1), casts.data['Obs'].reshape(-1,1)))
+		if obs:
+			data = np.hstack((casts.years.reshape(-1,1), casts.data['Obs'].reshape(-1,1)))
+		else:
+			data = casts.years.reshape(-1,1)
 		header = 'Year,Observations'
 		for key in casts.available_mmes():
 			data = np.hstack((data, casts.data[key].reshape(-1,1)))

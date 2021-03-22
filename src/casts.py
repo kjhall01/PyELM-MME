@@ -9,7 +9,7 @@ class Cast:
 		self.model_members = []
 		self.models, self.scalers = {}, {}
 		self.lats, self.lons = {}, {}
-		self.years, self.pcas = {}, {}
+		self.years, self.pcas = np.arange(1), {}
 
 
 	def point_to_ndx(self, point):
@@ -87,9 +87,19 @@ class Cast:
 		for key in self.model_members:
 			time_series_data_at_pt_xy = self.data[key] if lat_ndx==-1 and lon_ndx == -1 else self.data[key][lat_ndx, lon_ndx,:].reshape(-1,1)
 			model_data.append(time_series_data_at_pt_xy)
-		model_data = np.asarray(model_data).squeeze().transpose(1,0) if lat_ndx==-1 and lon_ndx == -1 else np.asarray(model_data).squeeze().transpose(1,0)
-		obs = self.data['Obs'] if lat_ndx == -1 and lon_ndx == -1 else self.data['Obs'][lat_ndx, lon_ndx, :].reshape(-1,1)
-		data = np.hstack((self.years, obs, model_data))
+		model_data=np.asarray(model_data).squeeze()
+		if len(model_data.shape) == 1:
+			model_data = model_data.reshape(-1,1)
+		print('model', model_data.shape)
+		model_data = np.asarray(model_data).transpose(1,0) if lat_ndx==-1 and lon_ndx == -1 else np.asarray(model_data).transpose(1,0)
+		if 'Obs' in self.available_data():
+			obs = self.data['Obs'] if lat_ndx == -1 and lon_ndx == -1 else self.data['Obs'][lat_ndx, lon_ndx, :].reshape(-1,1)
+			data = np.hstack((self.years, obs, model_data))
+		else:
+			obs = np.arange(model_data.shape[0]).reshape(-1,1)
+			data = np.hstack((self.years, obs, model_data))
+
+
 		return data
 
 	def add_spm(self, key, model, lat_ndx=-1, lon_ndx=-1, year_ndx=-1):
@@ -156,13 +166,13 @@ class Cast:
 			self.add_years( np.arange(data.shape[2])) #setting defaults
 		return True
 
-	def add_data(self, key, data, lat_ndx=-1, lon_ndx=-1, mm=True):
+	def add_data(self, key, data, lat_ndx=-1, lon_ndx=-1, mm=True, domain=None):
 		if len(data.shape) == 1: #for (m,) data as a list , reshape to (1, m)
 			data = data.reshape(-1, 1)
 		assert (len(data.shape) == 2 and data.shape[1] == 1) or len(data.shape) == 3, 'input data must be column vector or 3D matrix'
 
-		if key not in self.available_data() and key != 'Obs':
-			self.data[key] = np.zeros(self.data['Obs'].shape)
+
+
 
 		if mm:
 			self.model_members.append(key)
@@ -170,23 +180,40 @@ class Cast:
 		if lat_ndx == -1 and lon_ndx == -1:
 			self.data[key] = data  		#data[key] can either be (1,m) or [lat, lon, time]
 		else:
+			if key not in self.available_data() and key != 'Obs' and 'Obs' in self.available_data():
+				self.data[key] = np.zeros(self.data['Obs'].shape)
+			elif domain is not None:
+				self.data[key] = [[0 for j in range(domain[1])] for k in range(domain[2])]
 			self.data[key][lat_ndx, lon_ndx, :] = np.squeeze(data)
-		self.add_lats(key, np.arange(1)) #setting default
-		self.add_lons(key, np.arange(1)) #setting defaults
+
+		try:
+			lons, lats = self.lons[[key for key in self.lons][0]], self.lats[[key for key in self.lats][0]]
+		except:
+			lons, lats = [1], [1]
 
 		try:
 			x = self.scalers[key]
 		except:
-			self.scalers[key] = [[[0 for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
+			if 'Obs' in self.available_data():
+				self.scalers[key] = [[[0 for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
+			else:
+				self.scalers[key] = [[[0 for i in range(self.years.shape[0])] for j in range(len(lons))] for k in range(len(lats))]
 
 		try:
 			x = self.models[key]
 		except:
-			self.models[key] = [[[j+i+k for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
+			if 'Obs' in self.available_data():
+				self.models[key] = [[[j+i+k for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
+			else:
+				self.models[key] = [[[0 for i in range(self.years.shape[0])] for j in range(len(lons))] for k in range(len(lats))]
+
 		try:
 			x = self.pcas[key]
 		except:
-			self.pcas[key] = [[[j+i+k for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
+			if 'Obs' in self.available_data():
+				self.pcas[key] = [[[j+i+k for i in range(self.years.shape[0])] for j in range(len(self.lons['Obs']))] for k in range(len(self.lats['Obs']))]
+			else:
+				self.pcas[key] = [[[0 for i in range(self.years.shape[0])] for j in range(len(lons))] for k in range(len(lats))]
 
 
 	def save_point_skill(self, method_key, metric_key, data, lat_ndx=-1, lon_ndx=-1):

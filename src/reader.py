@@ -23,7 +23,9 @@ class Reader:
 		assert Path(filepath).is_file(), "Not a valid file path {}".format(filepath) #make sure its a valid file
 		delimiter = ',' if filepath.split('.')[-1] == 'csv' else '\t'
 		data = np.genfromtxt(filepath, delimiter=delimiter, dtype=float, skip_header=1 if has_header else 0)
-
+		if len(data.shape) == 1:
+			data = data.reshape(1,-1)
+			data = np.vstack((data, data))
 		ret, model_start_ndx = Cast(), 0
 		if has_years:
 			years = data[:,0]
@@ -35,9 +37,14 @@ class Reader:
 
 		for i in range(model_start_ndx, data.shape[1]):
 			ret.add_data('Model{}'.format(i - model_start_ndx + 1), data[:,i])
+			ret.add_lats('Model{}'.format(i - model_start_ndx + 1), np.arange(1))
+			ret.add_lons('Model{}'.format(i - model_start_ndx + 1), np.arange(1))
+
 		ret.add_years(years)
 
-		ret.add_data('EM', np.nanmean(data[:, model_start_ndx:], axis=1).reshape(-1, 1), mm=False)
+		ret.add_data('EM', np.nanmean(data[:, model_start_ndx:], axis=1).reshape(-1, 1), mm=False, domain=None if has_obs else [1,1])
+		ret.add_lats('EM', np.arange(1))
+		ret.add_lons('EM', np.arange(1))
 		return 'Single-Point', ret
 
 

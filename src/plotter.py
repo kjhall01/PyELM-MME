@@ -172,14 +172,12 @@ class Plotter:
 		for key in casts.available_mmes():
 			if key in methods:
 				data = casts.data[key].ravel().reshape(-1,1) if point is None else casts.mask_nans_var(casts.data[key])[plot_latkey[key]][plot_lonkey[key]]
-				years = np.arange(np.squeeze(data).shape[0])
 				plt.bar(np.arange(len(data)) - (width /2) + hfl * ndx , np.squeeze(data) , hfl,  label=key)
 				ndx += 1
 
 		for key in casts.available_members():
 			if members:
 				data = casts.data[key].ravel().reshape(-1,1) if point is None else casts.mask_nans_var(casts.data[key])[plot_latkey[key]][plot_lonkey[key]]
-				years = np.arange(np.squeeze(data).shape[0])
 				plt.bar(np.arange(len(data)) - (width /2) + hfl * ndx , np.squeeze(data) , hfl,  label=key)
 				ndx += 1
 
@@ -188,8 +186,12 @@ class Plotter:
 		try:
 			plt.xticks(labels=[str(int(yr)) for yr in np.squeeze(casts.years)], ticks=[i for i in range(len(casts.years))] )
 		except:
-			print(years)
-			plt.xticks(labels=years, ticks =[i for i in range(len(years))])
+			try:
+				years = np.squeeze(casts.years)
+				plt.xticks(labels=years, ticks =[i for i in range(len(np.squeeze(casts.years)))])
+			except:
+				plt.xticks(labels=[i for i in range(casts.years.shape[0])], ticks =[i for i in range(casts.years.shape[0])])
+
 		plt.ylabel(fcst.upper())
 		plt.legend()
 		plt.show()
