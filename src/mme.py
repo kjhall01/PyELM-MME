@@ -103,8 +103,8 @@ class MME:
 			train_scaler, test_scaler = Scaler(minmax_range=minmax_range), Scaler(minmax_range=minmax_range)
 			train_data = train_scaler.fit_transform(train_data, standardization)
 		else:
-			train_data = train_scaler.transform(train_data, method=standardization)
-		test_data = train_scaler.transform(test_data, method=standardization)
+			train_data = train_scaler.transform(train_data)
+		test_data = train_scaler.transform(test_data)
 		x_train, y_train = train_data[:, 2:], train_data[:, 1].reshape(-1,1)
 		if x_train.shape[0] == 1:
 			x_train = x_train.reshape(1,-1)
