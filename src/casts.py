@@ -90,7 +90,6 @@ class Cast:
 		model_data=np.asarray(model_data).squeeze()
 		if len(model_data.shape) == 1:
 			model_data = model_data.reshape(-1,1)
-		print('model', model_data.shape)
 		model_data = np.asarray(model_data).transpose(1,0) if lat_ndx==-1 and lon_ndx == -1 else np.asarray(model_data).transpose(1,0)
 		if 'Obs' in self.available_data():
 			obs = self.data['Obs'] if lat_ndx == -1 and lon_ndx == -1 else self.data['Obs'][lat_ndx, lon_ndx, :].reshape(-1,1)
