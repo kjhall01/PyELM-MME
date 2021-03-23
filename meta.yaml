@@ -1,0 +1,47 @@
+{% set version = "0.1.0" %}
+
+package:
+  name: pyelmmme
+  version: {{ version }}
+
+source:
+  url:
+
+build:
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools
+  run:
+    - python
+    - cartopy
+    - numpy
+    - xarray
+    - pandas
+    - pathlib
+    - matplotlib
+    - sklearn
+    - pickle
+    - copy
+    - mpl_toolkits
+    - warnings
+    - scipy
+    - pickle
+    - hpelm
+
+test:
+  imports:
+    - pyelmmme
+
+about:
+  home: https://github.com/shibukawa/imagesize_py
+  license: MIT
+  summary: 'Getting image size from png/jpeg/jpeg2000/gif file'
+  description: |
+    This module analyzes jpeg/jpeg2000/png/gif image header and
+    return image size.
+  dev_url: https://github.com/shibukawa/imagesize_py
+  doc_url: https://pypi.python.org/pypi/imagesize
+  doc_source_url: https://github.com/shibukawa/imagesize_py/blob/master/README.rst
