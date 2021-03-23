@@ -2,10 +2,10 @@
 
 package:
   name: pyelmmme
-  version: "0.1.5"
+  version: "0.1.6"
 
 source:
-  url: https://github.com/kjhall01/PyELM-MME/archive/refs/tags/v0.1.5.tar.gz
+  url: https://github.com/kjhall01/PyELM-MME/archive/refs/tags/v0.1.6.tar.gz
 
 build:
   number: 0

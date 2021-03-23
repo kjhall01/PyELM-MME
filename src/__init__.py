@@ -4,12 +4,13 @@ from .scaler import *
 from .plotter import *
 from .svd import *
 from .spm import *
+from .key import *
 
 from subprocess import PIPE, Popen
 from pathlib import Path
 
 __author__ = 'Kyle Hall'
-__version__ = '0.1.5'
+__version__ = '0.1.6'
 
 def pyelm1d_main():
 	from . import key as _
