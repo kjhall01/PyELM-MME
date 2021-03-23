@@ -1,13 +1,19 @@
-{% set version = "0.1.0" %}
+
 
 package:
   name: pyelmmme
-  version: {{ version }}
+  version: "0.1.0"
 
 source:
   url:
 
 build:
+  number: 0
+  string: pyelmmme
+  entry_points:
+  - pyelm1d = pyelmmme.key:pyelm1d_main
+  - pyelm2d = pyelmmme.key:pyelm2d_main
+
 
 requirements:
   host:
@@ -36,12 +42,9 @@ test:
     - pyelmmme
 
 about:
-  home: https://github.com/shibukawa/imagesize_py
+  home: https://github.com/kjhall01/PyELM-MME
   license: MIT
-  summary: 'Getting image size from png/jpeg/jpeg2000/gif file'
-  description: |
-    This module analyzes jpeg/jpeg2000/png/gif image header and
-    return image size.
-  dev_url: https://github.com/shibukawa/imagesize_py
-  doc_url: https://pypi.python.org/pypi/imagesize
-  doc_source_url: https://github.com/shibukawa/imagesize_py/blob/master/README.rst
+  summary: 'Using ELM for Climate Forecasting / Multi-Model Ensemble analysis'
+  description: | wrapper and data wrangler for MME methodologies including hpelm (Extreme Learning Machine)
+  dev_url: https://github.com/kjhall01/PyELM-MME
+  doc_url: https://doi.org/10.5281/zenodo.4515069
