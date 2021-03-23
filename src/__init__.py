@@ -8,19 +8,18 @@ from .key import *
 
 from subprocess import PIPE, Popen
 from pathlib import Path
+import os
 
 __author__ = 'Kyle Hall'
-__version__ = '0.1.6'
+__version__ = '0.1.7'
 
 def pyelm1d_main():
-	from . import key as _
-
-	wd = Path(_.__path__[0])
+	wd = os.path.dirname(os.path.abspath(__file__))
+	wd = Path(wd).parents[0 / 'src' / 'key'
 	proc = Popen(['jupyter', 'notebook', str( (wd / 'PyELM-MME-1D.ipynb').absolute()) ], stdout=PIPE, stderr=PIPE)
 
 
 def pyelm2d_main():
-	from . import key as _
-
-	wd = Path(_.__path__[0])
+	wd = os.path.dirname(os.path.abspath(__file__))
+	wd = Path(wd).parents[0 / 'src' / 'key'
 	proc = Popen(['jupyter', 'notebook', str( (wd / 'PyELM-MME-2D.ipynb').absolute()) ], stdout=PIPE, stderr=PIPE)
