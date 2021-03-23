@@ -4,7 +4,6 @@ from .scaler import *
 from .plotter import *
 from .svd import *
 from .spm import *
-from .key import *
 
 from subprocess import PIPE, Popen
 from pathlib import Path
