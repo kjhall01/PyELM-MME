@@ -162,7 +162,8 @@ class MME:
 				self.hindcasts.add_data('EM', np.nanmean(model_data, axis=0), mm=False)
 				self.hindcasts.add_lats('EM', self.hindcasts.lats['Obs'])
 				self.hindcasts.add_lons('EM', self.hindcasts.lons['Obs'])
-				print('EM [' + 25*'*' + ']' ) #calculating EM during input now
+				if self.verbose:
+					print('EM [' + 25*'*' + ']' ) #calculating EM during input now
 			else:
 				assert False, 'invalid mme method {}'.format(method)
 

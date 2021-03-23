@@ -137,10 +137,10 @@ class Cast:
 		return sorted([key for key in self.data.keys() if key in self.model_members ])
 
 	def available_data(self):
-		return sorted([key for key in self.data.keys() ])
+		return [key for key in self.data.keys() ]
 
 	def available_mmes(self):
-		return sorted([key for key in self.data.keys() if key not in self.model_members and key != 'Obs'])
+		return [key for key in self.data.keys() if key not in self.model_members and key != 'Obs']
 
 	def obs_available(self):
 		return 'Obs' in self.data.keys()

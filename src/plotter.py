@@ -14,7 +14,7 @@ class Plotter:
 		self.mme = mme
 		self.easteregg = 'daniel!!'
 
-	def timeline(self, fcst='hindcasts', methods=['EM', 'ELM', 'MLR'], members=[], point=None, obs=True):
+	def timeline(self, fcst='hindcasts', methods=['EM', 'ELM', 'MLR'], members=[], point=None, obs=True, var="Precipitation"):
 		assert self.mme.type == 'Single-Point' or point is not None, 'How would you plot a timeline for 2D data?'
 		casts= getattr(self.mme, fcst)
 
@@ -56,7 +56,7 @@ class Plotter:
 		else:
 			plt.xticks(labels=[i[0] for i in casts.years], ticks=[i for i in range(len(casts.years))], rotation=90)
 
-		plt.ylabel('Precipitation')
+		plt.ylabel(var)
 		plt.legend()
 		plt.show()
 
@@ -112,12 +112,20 @@ class Plotter:
 		the_table.scale(1,4)
 		plt.show()
 
-	def box_plot(self, fcst='hindcasts', methods=[ 'EM', 'ELM', 'MLR'], members=False, point=None, obs=True):
+	def box_plot(self, fcst='hindcasts', methods=[ 'EM', 'ELM', 'MLR'], members=False, point=None, obs=True, var='Precipitation'):
 		casts, data = getattr(self.mme, fcst), None
 		labels = []
 		if point is not None:
 			assert len(point) == 2, 'point must be a lat/long pair in form of a list'
 			plot_latkey, plot_lonkey = casts.point_to_ndx(point)
+
+
+		if obs:
+			labels.append('Obs')
+			if data is None:
+				data = casts.data['Obs'].ravel().reshape(-1,1) if point is None else casts.data['Obs'][plot_latkey['Obs']][plot_lonkey['Obs']].ravel().reshape(-1,1)
+			else:
+				data = np.hstack((data, casts.data['Obs'].ravel().reshape(-1,1) if point is None else casts.data['Obs'][plot_latkey['Obs']][plot_lonkey['Obs']].ravel().reshape(-1,1)))
 
 		for key in casts.available_mmes():
 			if key in methods:
@@ -135,19 +143,14 @@ class Plotter:
 				else:
 					data = np.hstack((data, casts.data[key].ravel().reshape(-1,1) if point is None else casts.data[key][plot_latkey[key]][plot_lonkey[key]].ravel().reshape(-1,1)))
 
-		if obs:
-			labels.append('Obs')
-			if data is None:
-				data = casts.data['Obs'].ravel().reshape(-1,1) if point is None else casts.data['Obs'][plot_latkey['Obs']][plot_lonkey['Obs']].ravel().reshape(-1,1)
-			else:
-				data = np.hstack((data, casts.data['Obs'].ravel().reshape(-1,1) if point is None else casts.data['Obs'][plot_latkey['Obs']][plot_lonkey['Obs']].ravel().reshape(-1,1)))
 		fig, ax = plt.subplots(figsize=(10,6))
 		ax.boxplot(data, whis=255)
 		plt.xticks(labels=labels, ticks=[i+1 for i in range(len(labels))] )
 		ax.set_xlim(-0.5, len(labels)+1.5)
+		plt.ylabel(var)
 		plt.show()
 
-	def bar_plot(self, fcst='forecasts', methods=[ 'EM', 'ELM', 'MLR'], members=False, point=None, obs=True):
+	def bar_plot(self, fcst='forecasts', methods=[ 'EM', 'ELM', 'MLR'], members=False, point=None, obs=True, var='Precipitation'):
 		casts = getattr(self.mme, fcst)
 		hcst = getattr(self.mme, 'hindcasts')
 		if point is not None:
@@ -192,7 +195,8 @@ class Plotter:
 			except:
 				plt.xticks(labels=[i for i in range(casts.years.shape[0])], ticks =[i for i in range(casts.years.shape[0])])
 
-		plt.ylabel(fcst.upper())
+		plt.title(fcst.upper())
+		plt.ylabel(var)
 		plt.legend()
 		plt.show()
 
