@@ -5,7 +5,7 @@ package:
   version: "0.1.8"
 
 source:
-  url: https://github.com/kjhall01/PyELM-MME/archive/refs/tags/v0.1.9.tar.gz
+  url: https://github.com/kjhall01/PyELM-MME/archive/refs/tags/v0.1.10.tar.gz
 
 build:
   number: 0
