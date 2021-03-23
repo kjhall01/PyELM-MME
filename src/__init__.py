@@ -9,7 +9,7 @@ from subprocess import PIPE, Popen
 from pathlib import Path
 
 __author__ = 'Kyle Hall'
-__version__ = '0.0.1'
+__version__ = '0.1.5'
 
 def pyelm1d_main():
 	from . import key as _
