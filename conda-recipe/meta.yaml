@@ -28,15 +28,11 @@ requirements:
     - pandas
     - pathlib
     - matplotlib
-    - sklearn
-    - pickle
-    - copy
-    - mpl_toolkits
-    - warnings
+    - scikit-learn
     - scipy
-    - pickle
-    - hpelm
-
+    - pytables
+    - fasteners
+    
 test:
   imports:
     - pyelmmme
@@ -45,6 +41,6 @@ about:
   home: https://github.com/kjhall01/PyELM-MME
   license: MIT
   summary: 'Using ELM for Climate Forecasting / Multi-Model Ensemble analysis'
-  description: | wrapper and data wrangler for MME methodologies including hpelm (Extreme Learning Machine)
+  description: 'wrapper and data wrangler for MME methodologies including hpelm (Extreme Learning Machine)'
   dev_url: https://github.com/kjhall01/PyELM-MME
   doc_url: https://doi.org/10.5281/zenodo.4515069
