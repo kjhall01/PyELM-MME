@@ -15,10 +15,10 @@ __version__ = '0.1.13'
 def pyelm1d_main():
 	wd = os.path.dirname(os.path.abspath(__file__))
 	wd = Path(wd).parents[0] / 'src' / 'key'
-	proc = Popen(['jupyter', 'notebook', str( (wd / 'PyELM-MME-1D.ipynb').absolute()) ], stdout=PIPE, stderr=PIPE)
+	proc = Popen(['jupyter', 'notebook', str( (wd / 'PyELM-MME-1D.ipynb').absolute()) ])
 
 
 def pyelm2d_main():
 	wd = os.path.dirname(os.path.abspath(__file__))
 	wd = Path(wd).parents[0] / 'src' / 'key'
-	proc = Popen(['jupyter', 'notebook', str( (wd / 'PyELM-MME-2D.ipynb').absolute()) ], stdout=PIPE, stderr=PIPE)
+	proc = Popen(['jupyter', 'notebook', str( (wd / 'PyELM-MME-2D.ipynb').absolute()) ])
