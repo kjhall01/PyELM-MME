@@ -1,7 +1,9 @@
 # PyELM-MME: A Python Module for Constructing and Comparing Multi-Model Ensemble Methodologies
-### Authors: Nachiketa Acharya (Model Science & Statistics), Kyle Hall (AI/ML & Software Dev)
+### Authors: Nachiketa Acharya (Climate Forecasting Science, Statistics &AI/ML), Kyle Hall (AI/ML & Software Dev)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4515069.svg)](https://doi.org/10.5281/zenodo.4515069)
+
+Based on the original code written in Matlab by Nachiketa Acharya
 
 ## Install with Anaconda:
 ```conda install -c hallkjc01 pyelmmme```
