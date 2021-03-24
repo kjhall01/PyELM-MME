@@ -8,7 +8,7 @@ Based on the original code written in Matlab by Nachiketa Acharya
 ## Install with Anaconda:
 ```conda install -c hallkjc01 pyelmmme```
 
-## Build from Source with Dependencies:
+## Or Build from Source with Dependencies:
 	* cartopy: conda install -c conda-forge cartopy
 	* xarray: conda install xarray
 	* scipy, numpy, matplotlib, pandas
