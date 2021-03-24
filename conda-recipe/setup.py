@@ -6,7 +6,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 
 setup(
     name = "pyelmmme",
-    version = "0.1.16",
+    version = "0.1.17",
     author = "Kyle Hall, Nachiketa Acharya",
     author_email = "hallkjc01@gmail.com",
     description = ("Using HPELM and Extreme Learning Machine to make climate forecasts and Multi Model Ensembles "),
