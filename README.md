@@ -1,7 +1,7 @@
 # PyELM-MME: A Python Module for Constructing and Comparing Multi-Model Ensemble Methodologies
 ### Authors: Nachiketa Acharya (Climate Forecasting Science, Statistics &AI/ML), Kyle Hall (AI/ML & Software Dev)
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4515069.svg)](https://doi.org/10.5281/zenodo.4515069)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4632513.svg)](https://doi.org/10.5281/zenodo.4632513)
 
 PyELM-MME is a robust and flexible python module for analyzing 2D (GCM x Year) and 4D (GCM x Lat x Lon x Year) climate data. It automates data wrangling, data cleaning, pre-processing (including standardization / scaling, and dimensionality reduction), formatting, and plotting.  It provides a flexible wrapper for external data science modules like scikit-learn and hpelm, and standardizes the interfaces to those libraries for simplicity. 
 
