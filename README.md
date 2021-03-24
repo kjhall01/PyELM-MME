@@ -3,10 +3,10 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4515069.svg)](https://doi.org/10.5281/zenodo.4515069)
 
-### Install from anaconda:
+## Install with Anaconda:
 ```conda install -c hallkjc01 pyelmmme```
 
-### Build from Source with Dependencies:
+## Build from Source with Dependencies:
 	* cartopy: conda install -c conda-forge cartopy
 	* xarray: conda install xarray
 	* scipy, numpy, matplotlib, pandas
@@ -14,22 +14,18 @@
 	* hpelm: pip install hpelm
 #####
  
-## Tutorial:
-#### PyELM-MME is centered around the Multi-Model Ensemble (MME) class.
+# Data I/O 
+## Initializing an MME Object using the Reader() class
 
+### Read 1D Data (model hindcasts & observations, spatially aggregated) with the Reader().read_txt() method. 
 ```
 import pyelmmme as pm
-hindcast_data = pm.Reader.read_txt('your_hindcast_file.csv') 
+reader = pm.Reader()
+hindcast_data = reader.read_txt('your_hindcast_file.csv', has_obs=True, has_years=True, has_header=False) 
 mme = pm.MME(hindcast_data)
 ```
 
-#### 'Single-Point' MMEs handle time series data for one lat/long point.
-```
-mme.read_txt('example.csv', delimiter=',')
-```
-#### The read_txt method loads csv data into MME's internals. It also sets the .type attribute to 'Single-Point', to ensure MME's Multi-Point methods aren't called accidentally.
-
-#### 'example.csv' will be a csv file with the following format, for N models and M years:
+#### 'your_hindcast_file.csv' will be a .csv file with the following format, for N models and M years. 
 
 Year 1 | Observation 1 | Model 1_1 | ... | Model N_1
  --- | --- | --- | --- | ---
@@ -38,7 +34,20 @@ Year 1 | Observation 1 | Model 1_1 | ... | Model N_1
  . | | | | .
  . | | | | .
  Year M | Observation M | Model 1_M | ... | Model N_M
+ 
+#### If your file doesn't have year labels, or has a header, you'll need to adjust the 'has_header' and 'has_years keyword arguments, whose defaults are has_header=False and has_years=True. 
 
+#### Note that for initializing an MME object requires historical observations - how would one train statistical models without them? 
+
+### Read 2D Data (model hindcasts & observations) with the Reader().read_txt() method. 
+```
+import pyelmmme as pm
+reader = pm.Reader()
+hindcast_data = reader.read_txt('your_hindcast_file.csv', has_obs=True, has_years=True, has_header=False) 
+mme = pm.MME(hindcast_data)
+```
+
+#### After reading in data, MME's internal variables will have been initialized. Next, we can use whichever MME methodologies we want to call the construct_crossvalidated_mme_hindcasts method.
 #### 'Multi-Point' MMEs accept data in ncdf format only. There are two methods, depending on the format of the data. If all model data and observations are DataArrays within one DataSet in one file, use:
 ```
 mme.read_full_ncdf('name_of_ncdf_file', latitude_key='latitude', longitude_key='longitude', time_key='time', observations_key='observations', using_datetime=True, axis_order='xyt', is_forecast=False)
@@ -52,9 +61,6 @@ mme.read_full_ncdf('name_of_ncdf_file', latitude_key='latitude', longitude_key='
 ```
 mme.read_multiple_ncdf('name_of_ncdf_dir', 'name_of_obs_file' latitude_key='latitude', longitude_key='longitude', time_key='time', obs_time_key='time', using_datetime=True, axis_order='xyt', is_forecast=False)
 ```
-
-#### After reading in data, MME's internal variables will have been initialized. Next, we can use whichever MME methodologies we want to call the construct_crossvalidated_mme_hindcasts method.
-
 #### Each methodology is referred to by a code (a string) and takes a different set of keyword arguments. Hindcasts created are stored internally.
 
 ## MME Methodologies
