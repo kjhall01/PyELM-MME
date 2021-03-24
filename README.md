@@ -26,8 +26,7 @@ reader = pm.Reader()
 hindcast_data = reader.read_txt('your_hindcast_file.csv', has_obs=True, has_years=True, has_header=False) 
 mme = pm.MME(hindcast_data)
 ```
-
-#### 'your_hindcast_file.csv' will be a .csv file with the following format, for N models and M years. 
+- 'your_hindcast_file.csv' will be a .csv file with the following format, for N models and M years. 
 
 Year 1 | Observation 1 | Model 1_1 | ... | Model N_1
  --- | --- | --- | --- | ---
@@ -37,9 +36,9 @@ Year 1 | Observation 1 | Model 1_1 | ... | Model N_1
  . | | | | .
  Year M | Observation M | Model 1_M | ... | Model N_M
  
-#### If your file doesn't have year labels, or has a header, you'll need to adjust the 'has_header' and 'has_years keyword arguments, whose defaults are has_header=False and has_years=True. 
+- If your file doesn't have year labels, or has a header, you'll need to adjust the 'has_header' and 'has_years keyword arguments, whose defaults are has_header=False and has_years=True. 
 
-#### Note that for initializing an MME object requires historical observations - how would one train statistical models without them? 
+- Note that for initializing an MME object requires historical observations - how would one train statistical models without them? 
 
 ### Read 2D Data (model hindcasts & observations, latxlongxtime) with the Reader().read_multiple_ncdf() method. 
 ```
@@ -48,10 +47,10 @@ reader = pm.Reader()
 hindcast_data = reader.read_multiple_ncdf('your_hindcast_directory', observations_filename='test_obs.nc', latitude_key='Y', longitude_key='X',obs_time_key='T', time_key='S') 
 mme = pm.MME(hindcast_data)
 ```
-#### your data files should be under the your_hindcast_directory directory - your_hindcast_directory/test_obs.nc 
-#### You need to provide the names of the coordinates in your netCDF Files with the latitude_key, longitude_key, time_key and obs_time_key keyword arguments. PyELM-MME will dynamically rename them .
-#### PyELM-MME doesn't care about any dimension but latitude, longitude and time. 'M' (model member) and 'L' (lead time) are other commmon ones- if they are present in your data, they will be removed by averaging over those dimensions. 
-#### again, note that observations data is required (statistics need a Y vector) 
+- your data files should be under the your_hindcast_directory directory - your_hindcast_directory/test_obs.nc 
+- You need to provide the names of the coordinates in your netCDF Files with the latitude_key, longitude_key, time_key and obs_time_key keyword arguments. PyELM-MME will dynamically rename them .
+- PyELM-MME doesn't care about any dimension but latitude, longitude and time. 'M' (model member) and 'L' (lead time) are other commmon ones- if they are present in your data, they will be removed by averaging over those dimensions. 
+- again, note that observations data is required (statistics need a Y vector) 
 
 ## Adding Forecast Data to an MME Object:
 ### After an MME Object is initialized, input data for real time forecasts can be added. 
@@ -67,15 +66,15 @@ fcst_data = reader.read_multiple_ncdf('your_forecast_directory', observations_fi
 mme = pm.MME(fcst_data)
 ```
 
-#### Note that for forecast input data, observations are optional. But you won't be able to examine skill if they arent there. 
+- Note that for forecast input data, observations are optional. But you won't be able to examine skill if they arent there. 
 
 ## Exporting MME Data:
 ### After you've trained models and calculated cross-validated hindcasts, you will be able to export data. 
-### If you've been working with 1D (spatially aggregated) data, you'll want to export to csv: 
+- If you've been working with 1D (spatially aggregated) data, you'll want to export to csv: 
 ```mme.export_csv('outputfile.csv', fcst='hindcasts') ```
-### And if youve been working with 2D (lat x long x time) data, you'll want to export to netCDF: 
+- And if youve been working with 2D (lat x long x time) data, you'll want to export to netCDF: 
 ```mme.export_ncdf('outputfile.ncdf', fcst='hindcasts') ```
-### if you've calculated real time forecasts, you can export those by setting the keyword argument fcst='forecasts'
+- if you've calculated real time forecasts, you can export those by setting the keyword argument fcst='forecasts'
 ```mme.export_ncdf('outputfile.ncdf', fcst='forecasts') ```
 
 
