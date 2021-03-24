@@ -3,23 +3,25 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4515069.svg)](https://doi.org/10.5281/zenodo.4515069)
 
-## Requirements:
+### Install from anaconda:
+```conda install -c hallkjc01 pyelmmme```
+
+### Build from Source with Dependencies:
 	* cartopy: conda install -c conda-forge cartopy
 	* xarray: conda install xarray
-	* scipy, numpy, matplotlib, pandas: should be standard anaconda distribution
+	* scipy, numpy, matplotlib, pandas
 	* scikit-learn: conda install sklearn
 	* hpelm: pip install hpelm
+#####
+ 
 ## Tutorial:
-#### PyMME is centered around the Multi-Model Ensemble (MME) class.
+#### PyELM-MME is centered around the Multi-Model Ensemble (MME) class.
 
 ```
-import pymme as pm
+import pyelmmme as pm
+hindcast_data = pm.Reader.read_txt('your_hindcast_file.csv') 
+mme = pm.MME(hindcast_data)
 ```
-
-```
-mme = pm.MME()
-```
-#### Each MME() object is either of type 'Single-Point', or 'Multi-Point'. This is determined by the format of the input data, and the method used to load it.
 
 #### 'Single-Point' MMEs handle time series data for one lat/long point.
 ```
@@ -94,55 +96,21 @@ mme.construct_crossvalidated_mme_hindcasts('ELM', hidden_layer_neurons=5, activa
 ### Once you have constructed all the MME hindcasts you want to examine, calculated their skills using the following:
 
 ## Skill Metrics
-
-##### Pearson Correlation
+#### Calculate Skill Metrics as Follows
 ```
-mme.Pearson()
+mme.Pearson() # Pearson Correlation 
+mme.Spearman() # Spearman Correlation 
+mme.MAE() # Mean Absolute Error 
+mme.MSE() # Mean Squared Error 
+mme.MSE(squared=False) # Root Mean Squared Error 
+mme.IOA() #Index of Agreement 
 ```
-
-##### Spearman Correlation
+#### Or, pass a list of keys to the convenience function: 
 ```
-mme.Spearman()
-```
-
-##### Mean Absolute Error
-```
-mme.MAE()
-```
-
-##### Mean Squared Error
-```
-mme.MSE()
-```
-
-##### Root Mean Squared Error
-```
-mme.MSE(squared=False)
-```
-
-##### Index of Agreement
-```
-mme.IOA()
-```
+mme.train_mmes(['
 
 
-## Once you've calculated all skill metrics you want, plot using
-```
-mme.plot()
-```
-### with keyword argument 'setting' equal to one of the following settings:
-##### for single-point MME's, or if you pass point=[lat index, lon index]:
-- 'Cross-Validated Hindcasts': timeline of xvalidated forecasts
-- 'Real Time Forecasts': timeline of realtime forecasts, if more than one
-- 'Training Forecasts': timeline  of non-xvalidated forecasts calculated by forecast models trained on all data
-- 'xval_hindcast_skill': grid of skills of xvalidated hindacsts
-- 'training_forecast_skill': grid of skills of forecasts models on training data
-- 'boxplot': show boxplots of distributions of xvalidated hindcasts data
-- 'training_forecast_boxplot': show boxplots of distributions of non-xvaldated hindcasts data
-##### for multi-point MMEs:
-- "Real Time Deterministic Forecast": map of deterministic forecast over lat/long grid
-- 'xval_hindcast_skill': map of skills of xvalidated hindacsts
-- 'training_forecast_skill': map of skills of forecasts models on training data
+
 
 
 ## You can train forecast models on all available data with:
