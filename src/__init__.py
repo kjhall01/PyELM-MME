@@ -28,7 +28,7 @@ pyelm1d = """{
    "outputs": [],
    "source": [
     "hindcast_data_file = 'test_data/NMME_data_BD.csv' #data used for cross-validated hindcast skill analysis, and to train forecast model\\n",
-    "hindcast_has_years = True"\\n,
+    "hindcast_has_years = True\\n",
     "hindcast_has_header = False\\n",
     "hindcast_has_obs = True #NOTE: This is mandatory \\n",
     "hindcast_export_file = 'bd.csv' #'None' or the name of a file to save cross validated hindcasts \\n",
