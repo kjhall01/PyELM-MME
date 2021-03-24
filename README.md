@@ -74,7 +74,7 @@ mme = pm.MME(fcst_data)
 ```mme.export_csv('outputfile.csv', fcst='hindcasts') ```
 - And if youve been working with 2D (lat x long x time) data, you'll want to export to netCDF: 
 ```mme.export_ncdf('outputfile.ncdf', fcst='hindcasts') ```
-- if you've calculated real time forecasts, you can export those by setting the keyword argument fcst='forecasts'
+- if you want to export real time forecasts, set the keyword argument fcst='forecasts'
 ```mme.export_ncdf('outputfile.ncdf', fcst='forecasts') ```
 
 
@@ -133,11 +133,22 @@ mme.cross_validate('ELM', hidden_layer_neurons=5, activation='sigm', standardiza
 - minmax_range (list, default=[-1,1]): minimum and maximum values to scale data to when using minmax scaling.
 - hidden_layer_neurons (int, default=5): Number of neurons in ELM's hidden layer
 - activation (str, default='sigm'): string representing activation function. 'sigm', 'lin', 'tanh', 'rbf_l1', 'rbf_l2', rbf_linf'
+#### The mme.forecast_model() function has the same interface as mme.cross_validate(), except it will train on all available data, not cross-validated data. These are the functions you would use to train RTF models. 
+#### Or, you can use the mme.train_rtf_models() convenience function to train many at once: 
+```mme.train_rtf_models(['EM', 'ELM', 'MLR'], args)```
+- args should probably be the same as it was before, otherwise the skill evaluations you probably did on the cross validated hindcasts won't be relevant.
+
+### After training real time forecast models, you can make real time forecasts! yay. Use the mme.make_RTFs() convenience function:
+```mme.make_RTFs(['EM', 'ELM', 'MLR']) #no args dictionary necessary, because we saved those when we trained the models```
+
+- you can also use the mme.forecast() method to do the MME methodologies individually: 
+```mme.forecast('ELM', model_cast='training_forecasts', data_cast='forecasts') ```
+- model_cast refers to an internal 'Cast' data structure that holds the real-time-forecast models we trained on all available hindcast data. 
+- data_cast refers to the internal 'Cast' structure that holds the forecast data that we read and added with add_forecast() 
 
 
-
-## Skill Metrics
-#### Calculate Skill Metrics as Follows
+# Assessing Skill
+## Calculate Skill Metrics as Follows:
 ```
 mme.Pearson() # Pearson Correlation 
 mme.Spearman() # Spearman Correlation 
@@ -146,25 +157,12 @@ mme.MSE() # Mean Squared Error
 mme.MSE(squared=False) # Root Mean Squared Error 
 mme.IOA() #Index of Agreement 
 ```
-#### Or, pass a list of keys to the convenience function: 
+- Or, pass a list of keys to the convenience function: 
 ```
-mme.train_mmes(['
-
-
-
-
-
-## You can train forecast models on all available data with:
+mme.measure_skill(['Pearson', 'Spearman', 'MAE', MSE', 'RMSE', 'IOA'])'
 ```
-mme.train_forecast_model(...)
-```
-#### This takes the same arguments as 'construct_crossvalidated_mme_hindcasts' - call multpile times for multiple mme methodologies
 
-#### and then you can calculate real time forecasts by reading in new data in the same way as above, but with the keyword argument 'is_forecast' = True, and then calling
-```
-mme.forecast(...)
-```
-#### with the same args as train_forecast_model. You won't be able to plot results  that you havent calculated yet.
+
 
 ## See PyMME-1D.ipynb and PyMME-2D.ipynb for examples, or just use those!
 
