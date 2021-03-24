@@ -86,7 +86,8 @@ mme = pm.MME(fcst_data)
 ```mme.train_mmes(['EM', 'ELM', 'MLR'], args)```
 
 ### args will be a python dict object with the following keys: 
-```args = {
+```
+args = {
     #EnsembleMean settings
     'em_xval_window': 1,               #odd number - behavior undefined for even number
 
@@ -100,39 +101,34 @@ mme = pm.MME(fcst_data)
     'elm_hidden_layer_neurons':3,     #number of hidden layer neurons - overridden if using PCA init
     'elm_activation': 'sigm',          #“lin” for linear, “sigm” or “tanh” for non-linear, “rbf_l1”, “rbf_l2” or “rbf_linf” for radial basis function neurons (https://hpelm.readthedocs.io/en/latest/api/elm.html)
     'elm_standardization' : 'std_anomaly',  #'minmax' or 'std_anomaly' or None
-    'elm_minmax_range': [-1, 1]        #choose [minimum, maximum] values for minmax scaling. ignored if not using minmax scaling
-}```
+    'elm_minmax_range': [-1, 1]        #choose [minimum, maximum] values for minmax scaling. ignored if not using minmax scaling 
+}
+```
+
+### or, you can use the cross_validate() function to do each model individually if you want. 
 
 #### Each methodology is referred to by a code (a string) and takes a different set of keyword arguments. Hindcasts created are stored internally.
 
-## MME Methodologies
-
-### Standard Ensemble Mean (EM)
-##### simple arithmetic mean
+#### Standard Ensemble Mean (EM) - simple arithmetic mean
 ```
-mme.construct_crossvalidated_mme_hindcasts('EM', xval_window=3)
+mme.cross_validate('EM', xval_window=3)
 ```
-##### accepts keyword arguments:
 - xval_window (int, default=3): number of years to leave out in each cross validation round. Must be odd.
 
 
-### Multiple Linear Regression (MLR)
-##### Standard multiple regression between model values and observations
+#### Multiple Linear Regression (MLR) - Standard multiple regression between model values and observations
 ```
-mme.construct_crossvalidated_mme_hindcasts('MLR'))
+mme.cross_validate('MLR', xval_window=3, standardization=None, fit_intercept=False)
 ```
-##### accepts keyword arguments:
 - xval_window (int, default=3): number of years to leave out in each cross validation round. Must be odd.
 - standardization (str or None, default=None): scaling method to apply to data. Either 'std_anomaly' or None
 - fit_intercept (bool, default=True): whether to include intercepts in calculation of model coefficients  
 
 
-### Extreme Learning Machine (ELM)
-##### Artificial Neural Network with randomized hidden layer weights and output weights solved by ELM method.
+#### Extreme Learning Machine (ELM) - Artificial Neural Network with randomized, untrained hidden layer weights and output weights solved by ELM method.
 ```
-mme.construct_crossvalidated_mme_hindcasts('ELM', hidden_layer_neurons=5, activation='sigm', standardization='minmax', minmax_range=[-1,1])
+mme.cross_validate('ELM', hidden_layer_neurons=5, activation='sigm', standardization='minmax', minmax_range=[-1,1])
 ```
-##### accepts keyword arguments:
 - xval_window (int, default=3): number of years to leave out in each cross validation round. Must be odd.
 - standardization (str or None, default=None): scaling method to apply to data. Either 'std_anomaly', 'minmax' or None
 - minmax_range (list, default=[-1,1]): minimum and maximum values to scale data to when using minmax scaling.
@@ -140,8 +136,6 @@ mme.construct_crossvalidated_mme_hindcasts('ELM', hidden_layer_neurons=5, activa
 - activation (str, default='sigm'): string representing activation function. 'sigm', 'lin', 'tanh', 'rbf_l1', 'rbf_l2', rbf_linf'
 
 
-
-### Once you have constructed all the MME hindcasts you want to examine, calculated their skills using the following:
 
 ## Skill Metrics
 #### Calculate Skill Metrics as Follows
