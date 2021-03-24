@@ -81,7 +81,27 @@ mme = pm.MME(fcst_data)
 
 # Training MME Models
 ## Calculating Cross-Validated Hindcasts:
-### Whether you've been working with spatially aggregated data or not
+### Whether you've been working with spatially aggregated data or not, you'll train models the same way. 
+### Use the mme.train_mmes() convenience function to train MMES: 
+```mme.train_mmes(['EM', 'ELM', 'MLR'], args)```
+
+### args will be a python dict object with the following keys: 
+```args = {
+    #EnsembleMean settings
+    'em_xval_window': 1,               #odd number - behavior undefined for even number
+
+    #MLR Settings
+    'mlr_fit_intercept': True,         #Whether to calculate the intercept for this model. If set to False, no intercept will be used in calculations (i.e. data is expected to be centered) (https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html)
+    'mlr_xval_window': 1,               #odd number - behavior undefined for even number
+    'mlr_standardization': None,        #'std_anomaly' or None
+
+    #ELM Settings 
+    'elm_xval_window': 1,              #odd number - behavior undefined for even number
+    'elm_hidden_layer_neurons':3,     #number of hidden layer neurons - overridden if using PCA init
+    'elm_activation': 'sigm',          #“lin” for linear, “sigm” or “tanh” for non-linear, “rbf_l1”, “rbf_l2” or “rbf_linf” for radial basis function neurons (https://hpelm.readthedocs.io/en/latest/api/elm.html)
+    'elm_standardization' : 'std_anomaly',  #'minmax' or 'std_anomaly' or None
+    'elm_minmax_range': [-1, 1]        #choose [minimum, maximum] values for minmax scaling. ignored if not using minmax scaling
+}```
 
 #### Each methodology is referred to by a code (a string) and takes a different set of keyword arguments. Hindcasts created are stored internally.
 
