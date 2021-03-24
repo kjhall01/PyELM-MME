@@ -2,17 +2,17 @@
 
 package:
   name: pyelmmme
-  version: "0.1.8"
+  version: "0.1.12"
 
 source:
-  url: https://github.com/kjhall01/PyELM-MME/archive/refs/tags/v0.1.10.tar.gz
+  url: https://github.com/kjhall01/PyELM-MME/archive/refs/tags/v0.1.12.tar.gz
 
 build:
   number: 0
   string: pyelmmme
   entry_points:
-  - pyelm1d = pyelmmme.key:pyelm1d_main
-  - pyelm2d = pyelmmme.key:pyelm2d_main
+  - pyelm1d = pyelmmme:pyelm1d_main
+  - pyelm2d = pyelmmme:pyelm2d_main
 
 
 requirements:
