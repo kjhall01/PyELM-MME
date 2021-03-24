@@ -16,10 +16,10 @@ Based on the original code written in Matlab by Nachiketa Acharya
 	* hpelm: pip install hpelm
 #####
  
-# Data I/O 
-## Initializing an MME Object using the Reader() class
+# Data I/O
+## Initializing an MME Object using the Reader() class: 
 
-### Read 1D Data (model hindcasts & observations, spatially aggregated) with the Reader().read_txt() method. 
+### Read 1D Data (GCM hindcasts & observations, spatially aggregated) with the Reader().read_txt() method. 
 ```
 import pyelmmme as pm
 reader = pm.Reader()
@@ -53,22 +53,36 @@ mme = pm.MME(hindcast_data)
 #### PyELM-MME doesn't care about any dimension but latitude, longitude and time. 'M' (model member) and 'L' (lead time) are other commmon ones- if they are present in your data, they will be removed by averaging over those dimensions. 
 #### again, note that observations data is required (statistics need a Y vector) 
 
+## Adding Forecast Data to an MME Object:
+### After an MME Object is initialized, input data for real time forecasts can be added. 
+#### 1D: 
+```
+fcst_data = reader.read_txt('your_forecast_file.csv', has_obs=True, has_years=True, has_header=False) 
+mme.add_forecast(fcst_data) 
+```
+
+#### 2D: 
+```
+fcst_data = reader.read_multiple_ncdf('your_forecast_directory', observations_filename='test_obs.nc', latitude_key='Y', longitude_key='X',obs_time_key='T', time_key='S') 
+mme = pm.MME(fcst_data)
+```
+
+#### Note that for forecast input data, observations are optional. But you won't be able to examine skill if they arent there. 
+
+## Exporting MME Data:
+### After you've trained models and calculated cross-validated hindcasts, you will be able to export data. 
+### If you've been working with 1D (spatially aggregated) data, you'll want to export to csv: 
+```mme.export_csv('outputfile.csv', fcst='hindcasts') ```
+### And if youve been working with 2D (lat x long x time) data, you'll want to export to netCDF: 
+```mme.export_ncdf('outputfile.ncdf', fcst='hindcasts') ```
+### if you've calculated real time forecasts, you can export those by setting the keyword argument fcst='forecasts'
+```mme.export_ncdf('outputfile.ncdf', fcst='forecasts') ```
 
 
-#### After reading in data, MME's internal variables will have been initialized. Next, we can use whichever MME methodologies we want to call the construct_crossvalidated_mme_hindcasts method.
-#### 'Multi-Point' MMEs accept data in ncdf format only. There are two methods, depending on the format of the data. If all model data and observations are DataArrays within one DataSet in one file, use:
-```
-mme.read_full_ncdf('name_of_ncdf_file', latitude_key='latitude', longitude_key='longitude', time_key='time', observations_key='observations', using_datetime=True, axis_order='xyt', is_forecast=False)
-```
-#### Note that you must pass the names of the coordinates within the ncdf file to the appropriate keyword argument, and provide teh name of the observations DataArray.
-#### Set using_datetime to False if not using standard datatime objects as time indexes.
-#### axis_order refers to the shape of the DS.variable.values array - it needs to be of shape (longitude, latitude, time) ('xyt'). if yours is of shape (time, longitude, latitude) pass axis_order='txy', we have automated the reshaping for you.
+# Training MME Models
+## Calculating Cross-Validated Hindcasts:
+### Whether you've been working with spatially aggregated data or not
 
-#### Similarly, if you have one model per ncdf file, and an observations file separately, place them all in the same subfolder and pass the path to it to:
-
-```
-mme.read_multiple_ncdf('name_of_ncdf_dir', 'name_of_obs_file' latitude_key='latitude', longitude_key='longitude', time_key='time', obs_time_key='time', using_datetime=True, axis_order='xyt', is_forecast=False)
-```
 #### Each methodology is referred to by a code (a string) and takes a different set of keyword arguments. Hindcasts created are stored internally.
 
 ## MME Methodologies
