@@ -3,7 +3,8 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4515069.svg)](https://doi.org/10.5281/zenodo.4515069)
 
-Inspired by original matlab code by Nachiketa Acharya 
+Inspired by original matlab code by Nachiketa Acharya
+Designed & Implemented by Kyle Hall 
 
 ## Install with Anaconda:
 ```conda install -c hallkjc01 pyelmmme```
