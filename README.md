@@ -41,13 +41,19 @@ Year 1 | Observation 1 | Model 1_1 | ... | Model N_1
 
 #### Note that for initializing an MME object requires historical observations - how would one train statistical models without them? 
 
-### Read 2D Data (model hindcasts & observations) with the Reader().read_txt() method. 
+### Read 2D Data (model hindcasts & observations, latxlongxtime) with the Reader().read_multiple_ncdf() method. 
 ```
 import pyelmmme as pm
 reader = pm.Reader()
-hindcast_data = reader.read_txt('your_hindcast_file.csv', has_obs=True, has_years=True, has_header=False) 
+hindcast_data = reader.read_multiple_ncdf('your_hindcast_directory', observations_filename='test_obs.nc', latitude_key='Y', longitude_key='X',obs_time_key='T', time_key='S') 
 mme = pm.MME(hindcast_data)
 ```
+#### your data files should be under the your_hindcast_directory directory - your_hindcast_directory/test_obs.nc 
+#### You need to provide the names of the coordinates in your netCDF Files with the latitude_key, longitude_key, time_key and obs_time_key keyword arguments. PyELM-MME will dynamically rename them .
+#### PyELM-MME doesn't care about any dimension but latitude, longitude and time. 'M' (model member) and 'L' (lead time) are other commmon ones- if they are present in your data, they will be removed by averaging over those dimensions. 
+#### again, note that observations data is required (statistics need a Y vector) 
+
+
 
 #### After reading in data, MME's internal variables will have been initialized. Next, we can use whichever MME methodologies we want to call the construct_crossvalidated_mme_hindcasts method.
 #### 'Multi-Point' MMEs accept data in ncdf format only. There are two methods, depending on the format of the data. If all model data and observations are DataArrays within one DataSet in one file, use:
