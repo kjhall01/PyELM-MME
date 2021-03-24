@@ -5,7 +5,7 @@
 
 PyELM-MME is a robust and flexible python module for analyzing 2D (GCM x Year) and 4D (GCM x Lat x Lon x Year) climate data. It automates data wrangling, data cleaning, pre-processing (including standardization / scaling, and dimensionality reduction), formatting, and plotting.  It provides a flexible wrapper for external data science modules like scikit-learn and hpelm, and standardizes the interfaces to those libraries for simplicity. 
 
-PyELM-MME is designed to be as easy to use as possible - it is our hope that our work will make Climate Model Science more accessible to novice programmers. 
+PyELM-MME is designed to be as easy to use and understand as possible - it is our hope that our work will make Climate Model Science more accessible to novice programmers. 
 
 - Inspired by original matlab code written by Nachiketa Acharya
 - PyELM-MME Designed & Implemented by Kyle Hall 
