@@ -7,10 +7,10 @@ from .spm import *
 
 from subprocess import PIPE, Popen
 from pathlib import Path
-import os
+import os, json
 
 __author__ = 'Kyle Hall'
-__version__ = '0.1.17'
+__version__ = '0.1.18'
 
 pyelm1d = """{
  "cells": [
@@ -27,18 +27,18 @@ pyelm1d = """{
    "metadata": {},
    "outputs": [],
    "source": [
-    "hindcast_data_file = 'test_data/NMME_data_BD.csv' #data used for cross-validated hindcast skill analysis, and to train forecast model\n",
-    "hindcast_has_years = True\n",
-    "hindcast_has_header = False\n",
-    "hindcast_has_obs = True #NOTE: This is mandatory \n",
-    "hindcast_export_file = 'bd.csv' #'None' or the name of a file to save cross validated hindcasts \n",
-    "\n",
-    "forecast_data_file = 'test_data/NMME_data_BD_forecast.csv' #data fed to trained model to produce forecasts, or None\n",
-    "forecast_has_years = True\n",
-    "forecast_has_header = False\n",
-    "forecast_has_obs = True #NOTE: for Forecasting, observations are optional\n",
-    "forecast_export_file = 'bd_rtf.csv'\n",
-    "\n",
+    "hindcast_data_file = 'test_data/NMME_data_BD.csv' #data used for cross-validated hindcast skill analysis, and to train forecast model\\n",
+    "hindcast_has_years = True"\\n,
+    "hindcast_has_header = False\\n",
+    "hindcast_has_obs = True #NOTE: This is mandatory \\n",
+    "hindcast_export_file = 'bd.csv' #'None' or the name of a file to save cross validated hindcasts \\n",
+    "\\n",
+    "forecast_data_file = 'test_data/NMME_data_BD_forecast.csv' #data fed to trained model to produce forecasts, or None\\n",
+    "forecast_has_years = True\\n",
+    "forecast_has_header = False\\n",
+    "forecast_has_obs = True #NOTE: for Forecasting, observations are optional\\n",
+    "forecast_export_file = 'bd_rtf.csv'\\n",
+    "\\n",
     "variable = 'Precipitation (mm/day)'"
    ]
   },
@@ -46,7 +46,7 @@ pyelm1d = """{
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# 2. Cross-Validated Hindcast Skill Evaluation\n",
+    "# 2. Cross-Validated Hindcast Skill Evaluation\\n",
     "#### 2a. Analysis Settings"
    ]
   },
@@ -56,7 +56,7 @@ pyelm1d = """{
    "metadata": {},
    "outputs": [],
    "source": [
-    "mme_methodologies = ['EM', 'MLR', 'ELM'] #list of MME methodologies to use \n",
+    "mme_methodologies = ['EM', 'MLR', 'ELM'] #list of MME methodologies to use \\n",
     "skill_metrics = [ 'MAE', 'IOA', 'MSE', 'RMSE', 'PearsonCoef', 'SpearmanCoef'] #list of metrics to compute - available: ['SpearmanCoef', 'SpearmanP', 'PearsonCoef', 'PearsonP', 'MSE', 'MAE', 'RMSE', 'IOA']"
    ]
   },
@@ -73,22 +73,22 @@ pyelm1d = """{
    "metadata": {},
    "outputs": [],
    "source": [
-    "args = {\n",
-    "    #EnsembleMean settings\n",
-    "    'em_xval_window': 1,               #odd number - behavior undefined for even number\n",
-    "\n",
-    "    #MLR Settings\n",
-    "    'mlr_fit_intercept': True,         #Whether to calculate the intercept for this model. If set to False, no intercept will be used in calculations (i.e. data is expected to be centered) (https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html)\n",
-    "    'mlr_xval_window': 1,               #odd number - behavior undefined for even number\n",
-    "    'mlr_standardization': None,        #'std_anomaly' or None\n",
-    "\n",
-    "    #ELM Settings \n",
-    "    'elm_xval_window': 1,              #odd number - behavior undefined for even number\n",
-    "    'elm_hidden_layer_neurons':10,     #number of hidden layer neurons - overridden if using PCA init\n",
-    "    'elm_activation': 'sigm',          #“lin” for linear, “sigm” or “tanh” for non-linear, “rbf_l1”, “rbf_l2” or “rbf_linf” for radial basis function neurons (https://hpelm.readthedocs.io/en/latest/api/elm.html)\n",
-    "    'elm_standardization' : 'minmax',  #'minmax' or 'std_anomaly' or None\n",
-    "    'elm_minmax_range': [-1, 1]        #choose [minimum, maximum] values for minmax scaling. ignored if not using minmax scaling\n",
-    "}\n"
+    "args = {\\n",
+    "    #EnsembleMean settings\\n",
+    "    'em_xval_window': 1,               #odd number - behavior undefined for even number\\n",
+    "\\n",
+    "    #MLR Settings\\n",
+    "    'mlr_fit_intercept': True,         #Whether to calculate the intercept for this model. If set to False, no intercept will be used in calculations (i.e. data is expected to be centered) (https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html)\\n",
+    "    'mlr_xval_window': 1,               #odd number - behavior undefined for even number\\n",
+    "    'mlr_standardization': None,        #'std_anomaly' or None\\n",
+    "\\n",
+    "    #ELM Settings \\n",
+    "    'elm_xval_window': 1,              #odd number - behavior undefined for even number\\n",
+    "    'elm_hidden_layer_neurons':10,     #number of hidden layer neurons - overridden if using PCA init\\n",
+    "    'elm_activation': 'sigm',          #“lin” for linear, “sigm” or “tanh” for non-linear, “rbf_l1”, “rbf_l2” or “rbf_linf” for radial basis function neurons (https://hpelm.readthedocs.io/en/latest/api/elm.html)\\n",
+    "    'elm_standardization' : 'minmax',  #'minmax' or 'std_anomaly' or None\\n",
+    "    'elm_minmax_range': [-1, 1]        #choose [minimum, maximum] values for minmax scaling. ignored if not using minmax scaling\\n",
+    "}\\n"
    ]
   },
   {
@@ -106,12 +106,12 @@ pyelm1d = """{
    },
    "outputs": [],
    "source": [
-    "from pyelmmme import * \n",
-    "\n",
-    "reader = Reader()  #Object that will handle our input data\n",
-    "data = reader.read_txt(hindcast_data_file, has_years=hindcast_has_years, has_obs=hindcast_has_obs, has_header=hindcast_has_header)\n",
-    "mme = MME(data)\n",
-    "mme.train_mmes(mme_methodologies, args)\n",
+    "from pyelmmme import * \\n",
+    "\\n",
+    "reader = Reader()  #Object that will handle our input data\\n",
+    "data = reader.read_txt(hindcast_data_file, has_years=hindcast_has_years, has_obs=hindcast_has_obs, has_header=hindcast_has_header)\\n",
+    "mme = MME(data)\\n",
+    "mme.train_mmes(mme_methodologies, args)\\n",
     "mme.measure_skill(skill_metrics)"
    ]
   },
@@ -128,7 +128,7 @@ pyelm1d = """{
    "metadata": {},
 	 "outputs": [],
    "source": [
-    "ptr = Plotter(mme)\n",
+    "ptr = Plotter(mme)\\n",
     "ptr.timeline(methods=mme_methodologies, members=False, obs=True, var=variable)"
    ]
   },
@@ -177,7 +177,7 @@ pyelm1d = """{
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# 3. Real Time Forecasting\n",
+    "# 3. Real Time Forecasting\\n",
     "#### 3a. RTF Settings"
    ]
   },
@@ -203,9 +203,9 @@ pyelm1d = """{
    "metadata": {},
    "outputs": [],
    "source": [
-    "fcst_data = reader.read_txt(forecast_data_file, has_years=forecast_has_years, has_obs=forecast_has_obs)\n",
-    "mme.add_forecast(fcst_data)\n",
-    "mme.train_rtf_models(forecast_methodologies, args)\n",
+    "fcst_data = reader.read_txt(forecast_data_file, has_years=forecast_has_years, has_obs=forecast_has_obs)\\n",
+    "mme.add_forecast(fcst_data)\\n",
+    "mme.train_rtf_models(forecast_methodologies, args)\\n",
     "mme.make_RTFs(forecast_methodologies)"
    ]
   },
@@ -276,28 +276,28 @@ pyelm2d = """{
    "metadata": {},
    "outputs": [],
    "source": [
-    "#Directory data loading parameters - training data\n",
-    "hindcast_directory = 'test_data/hindcasts/'              #name of directory with separate ncdf files for observations and each model \n",
-    "hcst_observations_file = 'chirps_hindcast.nc'    #name of file within ncdf_directory with observations data\n",
-    "hindcast_export_file = 'tanzania.nc'\n",
-    "\n",
-    "#Directory data loading parameters - forecast data\n",
-    "forecast_directory = 'test_data/forecasts/'              #name of directory with separate ncdf files for observations and each model \n",
-    "fcst_observations_file = 'chirps_forecast.nc' #or 'None'\n",
-    "forecast_export_file = 'tanzania_fcst.nc'\n",
-    "\n",
-    "#shared loading parameters\n",
-    "latitude_key = 'Y'                        #name of latitude coordinate in your ncdf file\n",
-    "longitude_key='X'                         #name of longitude coordinate in your ncdf file \n",
-    "time_key = 'S'                            #name of time coordinate in your ncdf file \n",
-    "obs_time_key = 'T'\n"
+    "#Directory data loading parameters - training data\\n",
+    "hindcast_directory = 'test_data/hindcasts/'              #name of directory with separate ncdf files for observations and each model \\n",
+    "hcst_observations_file = 'chirps_hindcast.nc'    #name of file within ncdf_directory with observations data\\n",
+    "hindcast_export_file = 'tanzania.nc'\\n",
+    "\\n",
+    "#Directory data loading parameters - forecast data\\n",
+    "forecast_directory = 'test_data/forecasts/'              #name of directory with separate ncdf files for observations and each model \\n",
+    "fcst_observations_file = 'chirps_forecast.nc' #or 'None'\\n",
+    "forecast_export_file = 'tanzania_fcst.nc'\\n",
+    "\\n",
+    "#shared loading parameters\\n",
+    "latitude_key = 'Y'                        #name of latitude coordinate in your ncdf file\\n",
+    "longitude_key='X'                         #name of longitude coordinate in your ncdf file \\n",
+    "time_key = 'S'                            #name of time coordinate in your ncdf file \\n",
+    "obs_time_key = 'T'\\n"
    ]
   },
   {
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# 2. MME Skill Evaluation\n",
+    "# 2. MME Skill Evaluation\\n",
     "#### 2a. Analysis Settings"
    ]
   },
@@ -307,8 +307,8 @@ pyelm2d = """{
    "metadata": {},
    "outputs": [],
    "source": [
-    "#analysis parameters \n",
-    "mme_methodologies = ['EM', 'MLR', 'ELM' ] #'MLR', 'PCR', 'SVD', 'ELM', 'EWP',list of MME methodologies to use - available: ['EM', 'MLR', 'ELM', 'Ridge'] 'SLFN' also works but is slow for 2D data\n",
+    "#analysis parameters \\n",
+    "mme_methodologies = ['EM', 'MLR', 'ELM' ] #'MLR', 'PCR', 'SVD', 'ELM', 'EWP',list of MME methodologies to use - available: ['EM', 'MLR', 'ELM', 'Ridge'] 'SLFN' also works but is slow for 2D data\\n",
     "skill_metrics = ['SpearmanCoef', 'PearsonCoef', 'RMSE', 'MSE',  'MAE', 'IOA'] #list of metrics to compute - available: ['SpearmanCoef', 'SpearmanP', 'PearsonCoef', 'PearsonP', 'MSE', 'MAE', 'RMSE', 'IOA']"
    ]
   },
@@ -325,29 +325,29 @@ pyelm2d = """{
    "metadata": {},
    "outputs": [],
    "source": [
-    "args = {\n",
-    "    #EnsembleMean settings\n",
-    "    'em_xval_window': 1,               #odd number - behavior undefined for even number\n",
-    "\n",
-    "    #MLR Settings\n",
-    "    'mlr_fit_intercept': True,         #Whether to calculate the intercept for this model. If set to False, no intercept will be used in calculations (i.e. data is expected to be centered) (https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html)\n",
-    "    'mlr_xval_window': 1,               #odd number - behavior undefined for even number\n",
-    "    'mlr_standardization': None,        #'std_anomaly' or None\n",
-    "\n",
-    "    #ELM Settings \n",
-    "    'elm_xval_window': 1,              #odd number - behavior undefined for even number\n",
-    "    'elm_hidden_layer_neurons':3,     #number of hidden layer neurons - overridden if using PCA init\n",
-    "    'elm_activation': 'sigm',          #“lin” for linear, “sigm” or “tanh” for non-linear, “rbf_l1”, “rbf_l2” or “rbf_linf” for radial basis function neurons (https://hpelm.readthedocs.io/en/latest/api/elm.html)\n",
-    "    'elm_standardization' : 'std_anomaly',  #'minmax' or 'std_anomaly' or None\n",
-    "    'elm_minmax_range': [-1, 1]        #choose [minimum, maximum] values for minmax scaling. ignored if not using minmax scaling\n",
-    "}\n"
+    "args = {\\n",
+    "    #EnsembleMean settings\\n",
+    "    'em_xval_window': 1,               #odd number - behavior undefined for even number\\n",
+    "\\n",
+    "    #MLR Settings\\n",
+    "    'mlr_fit_intercept': True,         #Whether to calculate the intercept for this model. If set to False, no intercept will be used in calculations (i.e. data is expected to be centered) (https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html)\\n",
+    "    'mlr_xval_window': 1,               #odd number - behavior undefined for even number\\n",
+    "    'mlr_standardization': None,        #'std_anomaly' or None\\n",
+    "\\n",
+    "    #ELM Settings \\n",
+    "    'elm_xval_window': 1,              #odd number - behavior undefined for even number\\n",
+    "    'elm_hidden_layer_neurons':3,     #number of hidden layer neurons - overridden if using PCA init\\n",
+    "    'elm_activation': 'sigm',          #“lin” for linear, “sigm” or “tanh” for non-linear, “rbf_l1”, “rbf_l2” or “rbf_linf” for radial basis function neurons (https://hpelm.readthedocs.io/en/latest/api/elm.html)\\n",
+    "    'elm_standardization' : 'std_anomaly',  #'minmax' or 'std_anomaly' or None\\n",
+    "    'elm_minmax_range': [-1, 1]        #choose [minimum, maximum] values for minmax scaling. ignored if not using minmax scaling\\n",
+    "}\\n"
    ]
   },
   {
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "#### 2c. Model Construction\n"
+    "#### 2c. Model Construction\\n"
    ]
   },
   {
@@ -359,20 +359,20 @@ pyelm2d = """{
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "\n",
-      "Computing MMEs\n",
-      "EM [*************************]\n",
-      "MLR [*************************]\n",
-      "ELM [*************************]\n"
+      "\\n",
+      "Computing MMEs\\n",
+      "EM [*************************]\\n",
+      "MLR [*************************]\\n",
+      "ELM [*************************]\\n"
      ]
     }
    ],
    "source": [
-    "from pyelmmme import * \n",
-    "\n",
-    "reader = Reader()  #Object that will handle our input data\n",
-    "data = reader.read_multiple_ncdf(hindcast_directory, observations_filename=hcst_observations_file, latitude_key=latitude_key, longitude_key=longitude_key,obs_time_key=obs_time_key, time_key=time_key)\n",
-    "mme = MME(data, verbose=True)\n",
+    "from pyelmmme import * \\n",
+    "\\n",
+    "reader = Reader()  #Object that will handle our input data\\n",
+    "data = reader.read_multiple_ncdf(hindcast_directory, observations_filename=hcst_observations_file, latitude_key=latitude_key, longitude_key=longitude_key,obs_time_key=obs_time_key, time_key=time_key)\\n",
+    "mme = MME(data, verbose=True)\\n",
     "mme.train_mmes(mme_methodologies, args)"
    ]
   },
@@ -392,56 +392,56 @@ pyelm2d = """{
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "\n",
-      "Analyzing Skill\n",
-      "SpearmanCoef\n",
-      "  ELM [*************************]\n",
-      "  EM [*************************]\n",
-      "  MLR [*************************]\n",
-      "  Model1 [*************************]\n",
-      "  Model2 [*************************]\n",
-      "  Model3 [*************************]\n",
-      "  Obs [*************************]\n",
-      "PearsonCoef\n",
-      "  ELM [*************************]\n",
-      "  EM [*************************]\n",
-      "  MLR [*************************]\n",
-      "  Model1 [*************************]\n",
-      "  Model2 [*************************]\n",
-      "  Model3 [*************************]\n",
-      "  Obs [*************************]\n",
-      "RMSE\n",
-      "  ELM [*************************]\n",
-      "  EM [*************************]\n",
-      "  MLR [*************************]\n",
-      "  Model1 [*************************]\n",
-      "  Model2 [*************************]\n",
-      "  Model3 [*************************]\n",
-      "  Obs [*************************]\n",
-      "MSE\n",
-      "  ELM [*************************]\n",
-      "  EM [*************************]\n",
-      "  MLR [*************************]\n",
-      "  Model1 [*************************]\n",
-      "  Model2 [*************************]\n",
-      "  Model3 [*************************]\n",
-      "  Obs [*************************]\n",
-      "MAE\n",
-      "  ELM [*************************]\n",
-      "  EM [*************************]\n",
-      "  MLR [*************************]\n",
-      "  Model1 [*************************]\n",
-      "  Model2 [*************************]\n",
-      "  Model3 [*************************]\n",
-      "  Obs [*************************]\n",
-      "IOA\n",
-      "  ELM [*************************]\n",
-      "  EM [*************************]\n",
-      "  MLR [*************************]\n",
-      "  Model1 [*************************]\n",
-      "  Model2 [*************************]\n",
-      "  Model3 [*************************]\n",
-      "  Obs [*************************]\n"
+      "\\n",
+      "Analyzing Skill\\n",
+      "SpearmanCoef\\n",
+      "  ELM [*************************]\\n",
+      "  EM [*************************]\\n",
+      "  MLR [*************************]\\n",
+      "  Model1 [*************************]\\n",
+      "  Model2 [*************************]\\n",
+      "  Model3 [*************************]\\n",
+      "  Obs [*************************]\\n",
+      "PearsonCoef\\n",
+      "  ELM [*************************]\\n",
+      "  EM [*************************]\\n",
+      "  MLR [*************************]\\n",
+      "  Model1 [*************************]\\n",
+      "  Model2 [*************************]\\n",
+      "  Model3 [*************************]\\n",
+      "  Obs [*************************]\\n",
+      "RMSE\\n",
+      "  ELM [*************************]\\n",
+      "  EM [*************************]\\n",
+      "  MLR [*************************]\\n",
+      "  Model1 [*************************]\\n",
+      "  Model2 [*************************]\\n",
+      "  Model3 [*************************]\\n",
+      "  Obs [*************************]\\n",
+      "MSE\\n",
+      "  ELM [*************************]\\n",
+      "  EM [*************************]\\n",
+      "  MLR [*************************]\\n",
+      "  Model1 [*************************]\\n",
+      "  Model2 [*************************]\\n",
+      "  Model3 [*************************]\\n",
+      "  Obs [*************************]\\n",
+      "MAE\\n",
+      "  ELM [*************************]\\n",
+      "  EM [*************************]\\n",
+      "  MLR [*************************]\\n",
+      "  Model1 [*************************]\\n",
+      "  Model2 [*************************]\\n",
+      "  Model3 [*************************]\\n",
+      "  Obs [*************************]\\n",
+      "IOA\\n",
+      "  ELM [*************************]\\n",
+      "  EM [*************************]\\n",
+      "  MLR [*************************]\\n",
+      "  Model1 [*************************]\\n",
+      "  Model2 [*************************]\\n",
+      "  Model3 [*************************]\\n",
+      "  Obs [*************************]\\n"
      ]
     }
    ],
@@ -462,7 +462,7 @@ pyelm2d = """{
    "metadata": {},
    "outputs": [],
    "source": [
-    "ptr = Plotter(mme)\n",
+    "ptr = Plotter(mme)\\n",
     "ptr.map_skill(methods=mme_methodologies, metrics=skill_metrics, members=True, obs=True)"
    ]
   },
@@ -516,7 +516,7 @@ pyelm2d = """{
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "saved to tanzania.nc\n"
+      "saved to tanzania.nc\\n"
      ]
     }
    ],
@@ -528,7 +528,7 @@ pyelm2d = """{
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# 4. Real Time Forecasting\n",
+    "# 4. Real Time Forecasting\\n",
     "#### 4a. Real Time Forecast Settings"
    ]
   },
@@ -538,7 +538,7 @@ pyelm2d = """{
    "metadata": {},
    "outputs": [],
    "source": [
-    "#forecast analysis parameters \n",
+    "#forecast analysis parameters \\n",
     "forecast_methodologies = ['EM', 'MLR', 'ELM' ]"
    ]
   },
@@ -553,18 +553,18 @@ pyelm2d = """{
      "name": "stdout",
      "output_type": "stream",
      "text": [
-      "\n",
-      "Training RTF Models\n",
-      "EM [*************************]\n",
-      "MLR [*************************]\n",
-      "ELM [*************************]\n"
+      "\\n",
+      "Training RTF Models\\n",
+      "EM [*************************]\\n",
+      "MLR [*************************]\\n",
+      "ELM [*************************]\\n"
      ]
     }
    ],
    "source": [
-    "fcst_data = reader.read_multiple_ncdf(forecast_directory, observations_filename=fcst_observations_file, latitude_key=latitude_key, longitude_key=longitude_key,obs_time_key=obs_time_key, time_key=time_key)\n",
-    "mme.add_forecast(fcst_data)\n",
-    "mme.train_rtf_models(forecast_methodologies, args)\n",
+    "fcst_data = reader.read_multiple_ncdf(forecast_directory, observations_filename=fcst_observations_file, latitude_key=latitude_key, longitude_key=longitude_key,obs_time_key=obs_time_key, time_key=time_key)\\n",
+    "mme.add_forecast(fcst_data)\\n",
+    "mme.train_rtf_models(forecast_methodologies, args)\\n",
     "mme.make_RTFs(forecast_methodologies)"
    ]
   },
@@ -635,6 +635,7 @@ def pyelm1d_main():
 	wd = os.path.dirname(os.path.abspath(__file__))
 	wd = Path(wd).parents[0] / 'pyelmmme'
 	with open(str((wd / 'PyELM-MME-1D.ipynb').absolute()), 'w') as f:
+
 		f.write(pyelm1d)
 
 	proc = Popen(['jupyter', 'notebook', str( (wd / 'PyELM-MME-1D.ipynb').absolute()) ])
