@@ -10,7 +10,7 @@ from pathlib import Path
 import os, json
 
 __author__ = 'Kyle Hall'
-__version__ = '0.1.18'
+__version__ = '0.1.19'
 
 pyelm1d = """{
  "cells": [
