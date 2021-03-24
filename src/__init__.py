@@ -10,7 +10,7 @@ from pathlib import Path
 import os
 
 __author__ = 'Kyle Hall'
-__version__ = '0.1.13'
+__version__ = '0.1.14'
 
 def pyelm1d_main():
 	wd = os.path.dirname(os.path.abspath(__file__))
