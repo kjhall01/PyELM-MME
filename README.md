@@ -162,13 +162,34 @@ mme.IOA() #Index of Agreement
 mme.measure_skill(['Pearson', 'Spearman', 'MAE', MSE', 'RMSE', 'IOA'])'
 ```
 
+# Plotting Results 
+### Each mapping function takes a list of methodologies, three keyword args named 'obs' and 'members' and 'fcst, and a list of skill metrics if applicable 
+- obs=True will plot observations - if there are not observations, clearly this will cause a problem 
+- members=True will plot individual model members 
+-  fcst='hindcasts' will plot cross validated hindcasts. fcst='forecasts' will plot real-time forecasts. fcst='training_forecasts' will plot non-cross-validated hindcasts, produced by the real-time-forecast models. 
+-  the 'variable' kw argument will set the Y-Axis of the plots, if they're 1D graphics. 
+- the 'point' keyword argument will plot the 1D values at a given lat/long point. it should be a python list or tuple
+#### Plotting functions include: 
+```
+ptr = Plotter(mme)
 
+#2D only 
+ptr.map_skill(methods=['EM', 'ELM', 'MLR'], metrics=['IOA', 'RMSE', (etc) ], members=True, obs=True) 
+ptr.map_forecasts(methods=['EM', 'ELM', 'MLR'], metrics=['IOA', 'RMSE', (etc) ], members=True, obs=True) 
 
-## See PyMME-1D.ipynb and PyMME-2D.ipynb for examples, or just use those!
+#1D or provide a point arugment: 
+ptr.box_plot(methods=['EM', 'ELM', 'MLR'], members=True, obs=True, variable='Precip (mm/day)', point=[9, -36]) 
+ptr.bar_plot(methods=['EM', 'ELM', 'MLR'], members=True, obs=True, variable='Precip (mm/day)', point=[9, -36]) 
+ptr.timeline(methods=['EM', 'ELM', 'MLR'], members=True, obs=True, variable='Precip (mm/day)', point=[9, -36]) 
+ptr.skill_matrx(methods=['EM', 'ELM', 'MLR'], members=True, obs=True, point=[9, -36, metrics=['IOA', 'RMSE', (etc) ]) 
+```
+#### if you're working with 1D data (GCMS x Years) make sure to leave out the point argument! 
 
-##Good Luck!
+# See PyMME-1D.ipynb and PyMME-2D.ipynb for examples, or just use those!
 
-## Works Cited
+# Good Luck!
+
+# Works Cited
 
 1. Acharya N, Kar SC, Kulkarni MA, Mohanty UC, Sahoo LN (2011) Multi-model ensemble schemes for predicting northeast mon- soon rainfall over peninsular India. J Earth Syst Sci 120:795–805
 2. Acharya N, Srivastava N.A., Panigrahi B.K. and Mohanty U.C. (2014): Development of an artificial neural network based multi-model ensemble to estimate the northeast monsoon rainfall over south peninsular India: an application of extreme learning machine. Climate Dynamics. 43(5):1303-1310.
