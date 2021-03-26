@@ -4,7 +4,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4632513.svg)](https://doi.org/10.5281/zenodo.4632513)
 
-PyELM-MME is a robust and flexible python module for analyzing 2D (GCM x Year) and 4D (GCM x Lat x Lon x Year) climate data. It automates data wrangling, data cleaning, pre-processing (including standardization / scaling, and dimensionality reduction), formatting, and plotting.  It provides a flexible wrapper for external data science modules like scikit-learn and hpelm, and standardizes the interfaces to those libraries for simplicity. 
+PyELM-MME is a robust and flexible python module for analyzing 2D (Data x Year) and 4D (Data x Lat x Lon x Year) climate data. It automates data wrangling, data cleaning, pre-processing (including standardization / scaling, and dimensionality reduction), formatting, and plotting.  It provides a flexible wrapper for external data science modules like scikit-learn and hpelm, and standardizes the interfaces to those libraries for simplicity. 
 
 PyELM-MME is designed to be as easy to use and understand as possible - it is our hope that our work will make Climate Model Science more accessible to novice programmers. 
 
@@ -25,7 +25,7 @@ PyELM-MME is designed to be as easy to use and understand as possible - it is ou
 # Data I/O
 ## Initializing an MME Object using the Reader() class: 
 
-### Read 2D Data (GCM hindcasts & observations, spatially aggregated) with the Reader().read_txt() method. 
+### Read 2D Data (GCM hindcasts & observations x year), spatially aggregated or for a single point with the Reader().read_txt() method. 
 ```
 import pyelmmme as pm
 reader = pm.Reader()
@@ -46,7 +46,7 @@ Year 1 | Observation 1 | Model 1_1 | ... | Model N_1
 
 - Note that for initializing an MME object requires historical observations - how would one train statistical models without them? 
 
-### Read 4D Data (model hindcasts & observations, latxlongxtime) with the Reader().read_multiple_ncdf() method. 
+### Read 4D Data (GCM hindcasts & observations x lat x long x year) with the Reader().read_multiple_ncdf() method. 
 ```
 import pyelmmme as pm
 reader = pm.Reader()
