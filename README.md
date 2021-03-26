@@ -25,7 +25,7 @@ PyELM-MME is designed to be as easy to use and understand as possible - it is ou
 # Data I/O
 ## Initializing an MME Object using the Reader() class: 
 
-### Read 1D Data (GCM hindcasts & observations, spatially aggregated) with the Reader().read_txt() method. 
+### Read 2D Data (GCM hindcasts & observations, spatially aggregated) with the Reader().read_txt() method. 
 ```
 import pyelmmme as pm
 reader = pm.Reader()
@@ -46,7 +46,7 @@ Year 1 | Observation 1 | Model 1_1 | ... | Model N_1
 
 - Note that for initializing an MME object requires historical observations - how would one train statistical models without them? 
 
-### Read 2D Data (model hindcasts & observations, latxlongxtime) with the Reader().read_multiple_ncdf() method. 
+### Read 4D Data (model hindcasts & observations, latxlongxtime) with the Reader().read_multiple_ncdf() method. 
 ```
 import pyelmmme as pm
 reader = pm.Reader()
@@ -66,7 +66,7 @@ fcst_data = reader.read_txt('your_forecast_file.csv', has_obs=True, has_years=Tr
 mme.add_forecast(fcst_data) 
 ```
 
-#### 2D: 
+#### 4D: 
 ```
 fcst_data = reader.read_multiple_ncdf('your_forecast_directory', observations_filename='test_obs.nc', latitude_key='Y', longitude_key='X',obs_time_key='T', time_key='S') 
 mme = pm.MME(fcst_data)
