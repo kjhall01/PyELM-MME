@@ -1,4 +1,5 @@
-# PyELM-MME: A Python Module for Constructing and Comparing Multi-Model Ensemble Methodologies
+# PyELM-MME: A Python Module for Constructing Extreme Learning Machine based Multi-Model Ensemble and Comparing other standard methods for Seasonal Forecasting.
+
 ### Authors: Nachiketa Acharya (Climate Forecasting Science, Statistics &AI/ML), Kyle Hall (AI/ML & Software Dev)
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4632513.svg)](https://doi.org/10.5281/zenodo.4632513)
