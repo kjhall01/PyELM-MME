@@ -60,7 +60,7 @@ mme = pm.MME(hindcast_data)
 
 ## Adding Forecast Data to an MME Object:
 ### After an MME Object is initialized, input data for real time forecasts can be added. 
-#### 1D: 
+#### 2D: 
 ```
 fcst_data = reader.read_txt('your_forecast_file.csv', has_obs=True, has_years=True, has_header=False) 
 mme.add_forecast(fcst_data) 
@@ -191,7 +191,7 @@ ptr.skill_matrx(methods=['EM', 'ELM', 'MLR'], members=True, obs=True, point=[9, 
 ```
 #### if you're working with 1D data (GCMS x Years) make sure to leave out the point argument! 
 
-# See PyELM-MME-1D.ipynb and PyELM-MME-2D.ipynb for examples, or just use those!
+# See PyELM-MME-2D.ipynb and PyELM-MME-4D.ipynb for examples, or just use those!
 
 # Good Luck!
 
